@@ -1,0 +1,465 @@
+<!doctype html>
+<html>
+  <head>
+    <title>{{ APP_NAME }} | Chat</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/emoji-mart@latest/css/emoji-mart.css"
+    />
+
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='User/message.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+    />
+  </head>
+  <audio id="dialTone" loop>
+    <source
+      src="{{ url_for('static', filename='uploads/dial.mp3') }}"
+      type="audio/mp3"
+    />
+  </audio>
+
+  <body>
+    <!-- STATUS SIDEBAR -->
+    <div class="sidebar">
+      <h6 class="mb-3">Status</h6>
+
+      <form id="statusForm" enctype="multipart/form-data">
+        <input class="form-control w-100 mb-3" type="file" id="statusFile" />
+        <button
+          type="button"
+          class="btn btn-success w-100 mb-3"
+          id="statusUploadBtn"
+        >
+          Upload Status
+        </button>
+      </form>
+       
+
+      <div id="statusCircleWrapper">
+        <svg id="statusCircle"></svg>
+        <img id="statusImage" src="" alt="Status" />
+      </div>
+    </div>
+
+    <!-- CHAT CONTAINER -->
+    <div class="chat-container shadow">
+      <!-- HEADER -->
+      <div
+        class="chat-header d-flex align-items-center justify-content-between p-2"
+      >
+        <!-- PROFILE + NAME -->
+        <div class="d-flex align-items-center">
+          <div style="position: relative">
+            <img
+              id="profileImg"
+              src="{{ url_for('static', filename='profile/' + (userInfo.profile if user and userInfo.profile else 'default.png')) }}"
+              alt="Profile"
+              style="
+                width: 40px;
+                height: 40px;
+                border-radius: 50%;
+                cursor: pointer;
+              "
+              onclick="viewProfile()"
+            />
+            <!-- HIDDEN FILE INPUT FOR UPLOAD -->
+            <input
+              type="file"
+              id="profileInput"
+              style="display: none"
+              accept="image/*"
+            />
+          </div>
+          <span style="margin-left: 10px; font-weight: bold"
+            >{{ user.sender_id if user else 'Chat' }}</span
+          >
+        </div>
+
+        <!-- CALL BUTTONS -->
+        <div>
+          <button onclick="startAudioCall()" class="btn btn-light btn-sm">
+            📞
+          </button>
+          <button onclick="startVideoCall()" class="btn btn-light btn-sm">
+            🎥
+          </button>
+        </div>
+
+        <!-- HIDDEN FILE INPUT -->
+        <input
+          type="file"
+          id="profileInput"
+          style="display: none"
+          accept="image/*"
+          onchange="uploadProfile(this.files[0])"
+        />
+      </div>
+
+      <!-- CHAT MESSAGES -->
+      <div class="chat-box" id="chatBox">
+        {% for msg in messages %}
+
+        <div
+          class="message {% if msg.sender_id == session['user_id'] %}sent{% else %}received{% endif %} {% if msg.status|int == 1 %}deleted{% endif %}"
+          id="msg{{msg.id}}"
+        >
+          {% if msg.status|int == 0 %}
+
+          <!-- REPLY BOX -->
+          {% if msg.reply %}
+          <div class="replyBox" onclick="scrollToMsg('{{msg.reply}}')">
+            ↩ {{ msg.reply_text }}
+          </div>
+          {% endif %}
+
+          <!-- MESSAGE CONTENT -->
+          <div class="msgContent">
+            {% if msg.type == "text" and msg.message %} {{ msg.message }} {%
+            elif msg.type == "audio" %}
+            <audio controls>
+              <source
+                src="{{ url_for('static', filename='uploads/' ~ msg.message) }}"
+              />
+            </audio>
+
+            {% elif msg.type == "video" %}
+            <video controls width="250">
+              <source
+                src="{{ url_for('static', filename='uploads/' ~ msg.message) }}"
+              />
+            </video>
+
+            {% elif msg.type == "file" %} {% set ext =
+            msg.message.split('.')[-1].lower() %} {% if ext in
+            ['jpg','jpeg','png','gif','webp'] %}
+
+            <img
+              src="{{ url_for('static', filename='uploads/' ~ msg.message) }}"
+              style="max-width: 250px; border-radius: 8px"
+              class="chat-image"
+            />
+
+            {% if msg.text %}
+            <div class="mt-1">{{ msg.text }}</div>
+            {% endif %} {% elif ext in ['mp4','webm'] %}
+            <video controls width="250">
+              <source
+                src="{{ url_for('static', filename='uploads/' ~ msg.message) }}"
+              />
+            </video>
+
+            {% elif ext in ['mp3','wav','ogg'] %}
+            <audio controls>
+              <source
+                src="{{ url_for('static', filename='uploads/' ~ msg.message) }}"
+              />
+            </audio>
+
+         {% else %}
+<div class="file-box">
+
+  <div class="file-icon">📄</div>
+
+  <div class="file-content">
+    <div class="file-name">
+      {{ msg.message }}
+    </div>
+
+    <div class="file-actions">
+  <a href="{{ url_for('static', filename='uploads/' ~ msg.message) }}" target="_blank">
+    <i class="fa-solid fa-eye"></i>
+  </a>
+
+  <a href="{{ url_for('static', filename='uploads/' ~ msg.message) }}" download>
+    <i class="fa-solid fa-download"></i>
+  </a>
+</div>
+  </div>
+
+</div>
+{% endif %}{% endif %}
+            <div class="msgTime">{{ msg.time }}</div>
+          </div>
+
+          <!-- REACTIONS -->
+          <div class="reactionBox" id="reaction{{msg.id}}">
+            {% if msg.reactions %} {% for r in msg.reactions %}
+            <span class="reaction">{{ r.emoji }}</span>
+            {% endfor %} {% endif %}
+          </div>
+
+          <!-- ACTION BUTTONS -->
+          <div class="msgActions">
+            <button class="reactBtn" data-id="{{msg.id}}">😊</button>
+
+            <div class="reactionPanel" id="panel{{msg.id}}"></div>
+
+            <div class="moreMenuWrapper">
+              <button class="moreBtn">⋮</button>
+
+              <div class="moreMenu">
+                <button
+                  class="replyMenuBtn iconBtn"
+                  data-id="{{msg.id}}"
+                  data-text="{{msg.message}}"
+                >
+                  <i class="bi bi-reply"></i> Reply
+                </button>
+
+                <button class="deleteMenuBtn iconBtn" data-id="{{msg.id}}">
+                  <i class="bi bi-trash"> Delete</i>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {% else %}
+          <div class="deletedTextWrapper">
+            <div class="deletedText"><i>This message was deleted</i></div>
+            <div class="deletedMsgInfo">
+              <span class="msgTime">{{ msg.time }}</span>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+
+        {% endfor %}
+      </div>
+      <div
+        id="replyPreview"
+        style="
+          display: none;
+          background: #f1f1f1;
+          padding: 8px;
+          border-left: 4px solid #25d366;
+          margin: 10px;
+          border-radius: 6px;
+        "
+      >
+        <span id="replyPreviewText"></span>
+
+        <button
+          onclick="cancelReply()"
+          class="btn btn-sm btn-danger"
+          style="float: right"
+        >
+          ✖
+        </button>
+      </div>
+      <div
+        id="filePreview"
+        style="
+          display: none;
+          background: white;
+          padding: 10px;
+          border-radius: 8px;
+          margin: 10px;
+        "
+      >
+        <div id="previewContent"></div>
+
+        <button
+          type="button"
+          onclick="removeAttachment()"
+          class="btn btn-sm btn-danger"
+        >
+          ✖ Remove
+        </button>
+      </div>
+
+      <form method="POST" enctype="multipart/form-data" id="chatForm">
+        <!-- RECORDING BAR -->
+        <div
+          id="recordingBar"
+          style="
+            display: none;
+            align-items: center;
+            gap: 10px;
+            background: #111;
+            color: white;
+            padding: 10px;
+            border-radius: 10px;
+            margin: 10px;
+          "
+        >
+          <span id="recordTime">0:00</span>
+
+          <canvas id="waveCanvas" width="200" height="40"></canvas>
+
+          <button
+            type="button"
+            id="sendAudio"
+            class="btn btn-success btn-sm"
+            style="display: none"
+          >
+            Send
+          </button>
+
+          <button
+            type="button"
+            id="deleteAudio"
+            class="btn btn-danger btn-sm"
+            style="display: none"
+          >
+            Delete
+          </button>
+
+          <button
+            type="button"
+            id="cancelRecord"
+            class="btn btn-warning btn-sm"
+          >
+            Cancel
+          </button>
+        </div>
+
+        <div class="chat-input">
+          <button type="button" id="emojiBtn" class="btn btn-light">😊</button>
+
+          <input type="hidden" name="reply_id" id="replyId" />
+
+          <input
+            type="text"
+            name="message"
+            class="form-control"
+            placeholder="Type message"
+            id="messageInput"
+          />
+          <button type="submit" class="send-btn">
+            <i class="fa fa-paper-plane"></i>
+          </button>
+
+          <!-- VOICE BUTTON (Hold to record) -->
+          <button type="button" class="btn btn-primary" id="voiceBtn">
+            🎤
+          </button>
+
+          <!-- RECORD BUTTON -->
+          <button type="button" class="btn btn-warning" id="recordBtn">
+            ⏺
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-secondary"
+            onclick="document.getElementById('attachmentInput').click()"
+          >
+            📎
+          </button>
+
+          <input
+            type="file"
+            name="attachment"
+            id="attachmentInput"
+            style="display: none"
+          />
+
+          <button type="button" class="btn btn-danger" id="recordVideoBtn">
+            🎥
+          </button>
+        </div>
+      </form>
+
+      <div
+        id="emojiPicker"
+        style="
+          position: absolute;
+          bottom: 80px;
+          left: 10px;
+          display: none;
+          z-index: 1000;
+        "
+      ></div>
+
+      <!-- VIDEO RECORD PREVIEW (FLOATING) -->
+      <div
+        id="videoPreviewBox"
+        style="
+          position: fixed;
+          bottom: 90px;
+          right: 20px;
+          width: 220px;
+          background: black;
+          border-radius: 10px;
+          overflow: hidden;
+          display: none;
+          z-index: 999;
+        "
+      >
+        <video id="videoPreview" autoplay muted style="width: 100%"></video>
+      </div>
+
+      <!-- STATUS VIEWER -->
+      <div class="status-viewer" id="statusViewer">
+        <button type="button" onclick="closeStatus()" class="close-btn">
+          ✖
+        </button>
+
+        <div id="statusContent" style="text-align: center; color: white">
+          <img
+            id="statusViewImage"
+            style="max-width: 100%; border-radius: 10px"
+          />
+
+          <div
+            id="statusTime"
+            style="margin-top: 10px; font-size: 14px; opacity: 0.8"
+          ></div>
+        </div>
+      </div>
+
+      <!-- AUDIO CALL -->
+      <div id="audioCallModal" class="callModal">
+        <div class="callHeader">
+          📞 Audio Call
+          <span id="callStatus">Calling...</span>
+        </div>
+
+        <div class="callControls">
+          <button id="acceptAudioCall" class="callBtn acceptCall">✔</button>
+          <button id="endAudioCallBtn" class="callBtn endCall">✖</button>
+        </div>
+      </div>
+
+      <!-- VIDEO CALL -->
+      <div id="videoCallModal" class="callModal">
+        <div class="callHeader">
+          🎥 Video Call
+          <span id="callStatusVideo">Calling...</span>
+        </div>
+
+        <div class="callVideos">
+          <video id="remoteVideo" autoplay playsinline></video>
+
+          <video id="localVideo" autoplay muted playsinline></video>
+        </div>
+
+        <div class="callControls">
+          <button id="acceptVideoCall" class="callBtn acceptCall">✔</button>
+          <button id="endVideoCallBtn" class="callBtn endCall">✖</button>
+        </div>
+      </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/emoji-mart@latest/dist/browser.js"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+      window.backendStatus = {{ status|tojson if status else '[]' }};
+    </script>
+
+    <script src="{{ url_for('static', filename='User/js/chat.js') }}"></script>
+  </body>
+</html>

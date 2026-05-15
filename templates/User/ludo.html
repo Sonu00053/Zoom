@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Ludo Game</title>
+    <style>
+        body { text-align:center; font-family: Arial; }
+        canvas { border:2px solid black; }
+        button { padding:10px 20px; margin-top:10px; }
+    </style>
+</head>
+<body>
+
+<h2>🎲 Ludo Game</h2>
+<canvas id="game" width="600" height="600"></canvas><br>
+<button onclick="rollDice()">Roll Dice</button>
+<p id="info"></p>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+const size = 40;
+
+// -------- CORRECT PATH -------- //
+let path = [
+    {x:6,y:13},{x:6,y:12},{x:6,y:11},{x:6,y:10},{x:6,y:9},{x:5,y:8},
+    {x:4,y:8},{x:3,y:8},{x:2,y:8},{x:1,y:8},{x:0,y:8},
+    {x:0,y:7},{x:0,y:6},
+    {x:1,y:6},{x:2,y:6},{x:3,y:6},{x:4,y:6},{x:5,y:6},{x:6,y:5},
+    {x:6,y:4},{x:6,y:3},{x:6,y:2},{x:6,y:1},{x:6,y:0},
+    {x:7,y:0},{x:8,y:0},
+    {x:8,y:1},{x:8,y:2},{x:8,y:3},{x:8,y:4},{x:8,y:5},{x:9,y:6},
+    {x:10,y:6},{x:11,y:6},{x:12,y:6},{x:13,y:6},{x:14,y:6},
+    {x:14,y:7},{x:14,y:8},
+    {x:13,y:8},{x:12,y:8},{x:11,y:8},{x:10,y:8},{x:9,y:8},{x:8,y:9},
+    {x:8,y:10},{x:8,y:11},{x:8,y:12},{x:8,y:13},{x:8,y:14},
+    {x:7,y:14}
+];
+
+// -------- PLAYER -------- //
+let player = {
+    color:"red",
+    pos:-1
+};
+
+let currentPlayer = 1;
+let diceValue = 1;
+
+// -------- DRAW PLAYER -------- //
+function drawPlayer(){
+    if(player.pos !== -1){
+        let p = path[player.pos];
+        ctx.beginPath();
+        ctx.arc(p.x*size+20, p.y*size+20, 12, 0, Math.PI*2);
+        ctx.fillStyle="red";
+        ctx.fill();
+    }
+}
+
+// -------- SMOOTH MOVE -------- //
+function moveSteps(steps){
+    let count = 0;
+
+    let interval = setInterval(()=>{
+        if(count >= steps){
+            clearInterval(interval);
+            return;
+        }
+
+        if(player.pos === -1){
+            player.pos = 0;
+        } else {
+            player.pos = (player.pos + 1) % path.length;
+        }
+
+        count++;
+    }, 200); // speed
+}
+
+// -------- DICE -------- //
+function rollDice(){
+    diceValue = Math.floor(Math.random()*6)+1;
+
+    if(player.pos === -1){
+        if(diceValue === 6){
+            moveSteps(1);
+        }
+    } else {
+        moveSteps(diceValue);
+    }
+
+    document.getElementById("info").innerText =
+        "Dice: "+diceValue;
+}
+
+// -------- LOOP -------- //
+function gameLoop(){
+    ctx.clearRect(0,0,600,600);
+
+    drawGrid();
+    drawHomes();
+    drawCenter();
+    drawPlayer();
+
+    requestAnimationFrame(gameLoop);
+}
+
+// -------- EXISTING FUNCTIONS (same) -------- //
+function drawGrid(){
+    for(let i=0;i<15;i++){
+        for(let j=0;j<15;j++){
+            ctx.strokeStyle="#ddd";
+            ctx.strokeRect(i*size,j*size,size,size);
+        }
+    }
+}
+
+function drawHomes(){
+    ctx.fillStyle="red"; ctx.fillRect(0,0,6*size,6*size);
+    ctx.fillStyle="green"; ctx.fillRect(9*size,0,6*size,6*size);
+    ctx.fillStyle="blue"; ctx.fillRect(0,9*size,6*size,6*size);
+    ctx.fillStyle="yellow"; ctx.fillRect(9*size,9*size,6*size,6*size);
+}
+
+function drawCenter(){
+    ctx.fillStyle="red";
+    ctx.beginPath();
+    ctx.moveTo(6*size,6*size);
+    ctx.lineTo(9*size,6*size);
+    ctx.lineTo(7.5*size,7.5*size);
+    ctx.fill();
+
+    ctx.fillStyle="green";
+    ctx.beginPath();
+    ctx.moveTo(9*size,6*size);
+    ctx.lineTo(9*size,9*size);
+    ctx.lineTo(7.5*size,7.5*size);
+    ctx.fill();
+
+    ctx.fillStyle="yellow";
+    ctx.beginPath();
+    ctx.moveTo(9*size,9*size);
+    ctx.lineTo(6*size,9*size);
+    ctx.lineTo(7.5*size,7.5*size);
+    ctx.fill();
+
+    ctx.fillStyle="blue";
+    ctx.beginPath();
+    ctx.moveTo(6*size,9*size);
+    ctx.lineTo(6*size,6*size);
+    ctx.lineTo(7.5*size,7.5*size);
+    ctx.fill();
+}
+
+gameLoop();
+</script>
+
+</body>
+</html>
