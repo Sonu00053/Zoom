@@ -1,12 +1,10 @@
 # routes/user_routes.py
-# Minimal version: only /zoom route
-
 from flask import Blueprint
 
-# ---------------- BLUEPRINT ---------------- #
+# Blueprint must be created before using @user_bp.route
 user_bp = Blueprint("user_bp", __name__)
 
-# ---------------- SAFE IMPORT ---------------- #
+# Safe import for Zoom controller
 try:
     from controllers.User.Zoom import ZoomController
 except Exception as e:
@@ -15,14 +13,14 @@ except Exception as e:
     class ZoomController:
         @staticmethod
         def start():
-            return "ZoomController failed to load"
+            return "ZoomController import failed"
 
-# ---------------- ZOOM ROUTE ---------------- #
+# Zoom route
 @user_bp.route("/zoom")
 def zoom():
     return ZoomController.start()
 
-# ---------------- TEST ROUTE ---------------- #
+# Test route
 @user_bp.route("/test")
 def test():
     return "user_routes.py loaded successfully"
