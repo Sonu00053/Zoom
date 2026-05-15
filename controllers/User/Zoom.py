@@ -1,28 +1,31 @@
+# controllers/User/Zoom.py
+
 from playwright.sync_api import sync_playwright
+import threading
 import time
+import traceback
 
 
 class ZoomController:
     # Zoom meeting URL
     meeting_url = "https://app.zoom.us/wc/join/87851420305?pwd=4wF4U8"
 
-    # Har run me 50 naye users
-    users = [f"TestUser{i}" for i in range(1, 51)]
+    # Start with 10 users for Render
+    users = [f"TestUser{i}" for i in range(1, 11)]
 
     @classmethod
     def join_user(cls, browser, user):
         print(f"Joining {user}...")
 
-        # Har user ke liye alag browser context
         context = browser.new_context(
-            permissions=[],  # camera/mic permissions deny
+            permissions=[],
             viewport={"width": 1280, "height": 720},
         )
 
         page = context.new_page()
 
         try:
-            # Camera/mic API disable
+            # Disable camera/mic
             page.add_init_script("""
                 Object.defineProperty(navigator, 'mediaDevices', {
                     value: {
@@ -33,90 +36,76 @@ class ZoomController:
                 });
             """)
 
-            # Zoom web client open
+            # Open Zoom Web Client
             page.goto(
                 cls.meeting_url,
                 wait_until="domcontentloaded",
                 timeout=45000
             )
 
-            # Name input wait
+            # Fill participant name
             page.wait_for_selector('input[type="text"]', timeout=15000)
-
-            # Participant name fill
             page.locator('input[type="text"]').first.fill(user)
 
-            # Join button click
+            # Click Join button
             page.locator(
                 'button:has-text("Join"), '
                 'button:has-text("Join Meeting")'
             ).first.click()
 
-            print(f"{user}: Join submitted")
-
-            # Secondary dialogs handle
             page.wait_for_timeout(3000)
 
-            selectors = [
-                'button:has-text("Got it")',
-                'button:has-text("OK")',
-                'button:has-text("Cancel")',
-            ]
-
-            for selector in selectors:
-                try:
-                    btn = page.locator(selector)
-                    if btn.count() > 0 and btn.first.is_visible():
-                        btn.first.click()
-                        page.wait_for_timeout(500)
-                except Exception:
-                    pass
-
-            print(f"{user}: Joined successfully")
-            return context  # Context open rakho
+            print(f"{user}: joined successfully")
+            return context
 
         except Exception as e:
-            print(f"{user}: Failed -> {e}")
+            print(f"{user}: failed -> {e}")
+            traceback.print_exc()
             context.close()
             return None
 
     @classmethod
-    def start(cls):
-        with sync_playwright() as p:
-            # Headless mode => koi tab visible nahi
-            browser = p.chromium.launch(
-                headless=True,
-                args=[
-                    "--mute-audio",
-                    "--disable-notifications",
-                    "--disable-popup-blocking",
-                    "--disable-infobars",
-                    "--no-sandbox",
-                    "--disable-dev-shm-usage",
-                    "--disable-gpu",
-                ],
-            )
+    def run_zoom(cls):
+        try:
+            with sync_playwright() as p:
+                browser = p.chromium.launch(
+                    headless=True,
+                    args=[
+                        "--mute-audio",
+                        "--disable-notifications",
+                        "--disable-popup-blocking",
+                        "--disable-infobars",
+                        "--no-sandbox",
+                        "--disable-dev-shm-usage",
+                        "--disable-gpu",
+                    ],
+                )
 
-            contexts = []
+                contexts = []
 
-            for user in cls.users:
-                context = cls.join_user(browser, user)
-                if context:
-                    contexts.append(context)
+                for user in cls.users:
+                    context = cls.join_user(browser, user)
+                    if context:
+                        contexts.append(context)
 
-                # Thoda fast joining
-                time.sleep(0.2)
+                    time.sleep(0.2)
 
-            print(f"\n{len(contexts)} participants joined successfully.")
-            print("Press Ctrl+C to stop and disconnect all users.")
+                print(f"{len(contexts)} users joined successfully.")
 
-            try:
-                while True:
-                    time.sleep(60)
-            except KeyboardInterrupt:
-                print("\nClosing browser...")
+                # Keep users connected for 10 minutes
+                time.sleep(600)
+
                 browser.close()
+                print("Browser closed.")
 
+        except Exception as e:
+            print("ZoomController Error:", e)
+            traceback.print_exc()
 
-if __name__ == "__main__":
-    ZoomController.start()
+    @classmethod
+    def start(cls):
+        # Run in background thread so Flask responds immediately
+        thread = threading.Thread(target=cls.run_zoom, daemon=True)
+        thread.start()
+
+        return "Zoom automation started successfully!"
