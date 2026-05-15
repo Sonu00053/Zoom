@@ -1,5 +1,8 @@
+# requirements.txt
+
 flask==3.0.3
 Flask-SocketIO==5.5.1
 eventlet==0.40.0
 gunicorn==22.0.0
 playwright==1.52.0
+mysql-connector-python==9.4.0

@@ -1,3 +1,9 @@
+# app.py
+
+# IMPORTANT: eventlet monkey patch MUST be first
+import eventlet
+eventlet.monkey_patch()
+
 from flask import Flask
 from flask_socketio import SocketIO, emit
 import threading
@@ -8,7 +14,7 @@ import traceback
 # ---------------- SAFE IMPORTS ---------------- #
 try:
     from config.constant import APP_NAME, SECRET_KEY
-except Exception as e:
+except Exception:
     print("Error importing config.constant:")
     traceback.print_exc()
     APP_NAME = "Zoom App"
@@ -16,21 +22,21 @@ except Exception as e:
 
 try:
     from routes.user_routes import user_bp
-except Exception as e:
+except Exception:
     print("Error importing routes.user_routes:")
     traceback.print_exc()
     user_bp = None
 
 try:
     from routes.site_routes import site_bp
-except Exception as e:
+except Exception:
     print("Error importing routes.site_routes:")
     traceback.print_exc()
     site_bp = None
 
 try:
     from controllers.User.Userinfo import UserController
-except Exception as e:
+except Exception:
     print("Error importing UserController:")
     traceback.print_exc()
 
@@ -65,7 +71,7 @@ def auto_cron_loop():
             print("AutoCron Error:")
             traceback.print_exc()
 
-        time.sleep(5)  # every 5 seconds
+        eventlet.sleep(5)   # use eventlet.sleep instead of time.sleep
 
 
 # ---------------- SOCKET EVENTS ---------------- #
@@ -134,21 +140,17 @@ def home():
 
 
 # ---------------- START BACKGROUND THREAD ---------------- #
-threading.Thread(target=auto_cron_loop, daemon=True).start()
+socketio.start_background_task(auto_cron_loop)
 
 
 # ---------------- MAIN ---------------- #
 if __name__ == "__main__":
-    try:
-        port = int(os.environ.get("PORT", 10000))
-        print(f"Starting server on port {port}...")
+    port = int(os.environ.get("PORT", 10000))
+    print(f"Starting server on port {port}...")
 
-        socketio.run(
-            app,
-            host="0.0.0.0",
-            port=port,
-            debug=False
-        )
-    except Exception:
-        print("Application failed to start:")
-        traceback.print_exc()
+    socketio.run(
+        app,
+        host="0.0.0.0",
+        port=port,
+        debug=False
+    )
