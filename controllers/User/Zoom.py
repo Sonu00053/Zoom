@@ -1,18 +1,16 @@
-# controllers/User/Zoom.py
-
 from playwright.sync_api import sync_playwright
 import threading
 import time
 import traceback
-import glob
 
 
 class ZoomController:
-    # Zoom Web Client URL
+
+    # Zoom meeting URL
     meeting_url = "https://us05web.zoom.us/wc/join/84507049104?pwd=3PtVVMpyq11H6UFG81bawvwm0snLbr.1"
 
-    # Test users
-    users = [f"TestUser{i}" for i in range(1, 11)]
+    # Simple test users list (sequential only)
+    users = [f"TestUser{i}" for i in range(1, 6)]
 
     @classmethod
     def join_user(cls, browser, user):
@@ -20,13 +18,13 @@ class ZoomController:
 
         context = browser.new_context(
             viewport={"width": 1280, "height": 720},
-            permissions=[],
+            permissions=[]
         )
 
         page = context.new_page()
 
         try:
-            # Disable camera and microphone access
+            # Disable media devices
             page.add_init_script("""
                 Object.defineProperty(navigator, 'mediaDevices', {
                     value: {
@@ -37,39 +35,40 @@ class ZoomController:
                 });
             """)
 
-            # Open Zoom web client
+            # Open Zoom
             page.goto(cls.meeting_url, wait_until="domcontentloaded", timeout=60000)
 
             page.wait_for_timeout(5000)
 
-            # Click "Join from Your Browser" if present
+            # Handle "Join from Browser"
             try:
-                browser_link = page.locator('a:has-text("Join from Your Browser")')
-                if browser_link.count() > 0:
-                    browser_link.first.click()
+                join_browser = page.locator('a:has-text("Join from Your Browser")')
+                if join_browser.count() > 0:
+                    join_browser.first.click()
                     page.wait_for_timeout(3000)
             except:
                 pass
 
-            # Fill participant name
+            # Enter name
             name_input = page.locator('input[type="text"]').first
             name_input.wait_for(timeout=20000)
             name_input.fill(user)
 
-            # Click Join button
-            join_button = page.locator(
+            # Click Join
+            join_btn = page.locator(
                 'button:has-text("Join"), button:has-text("Join Meeting")'
             ).first
-            join_button.click()
+            join_btn.click()
 
             page.wait_for_timeout(8000)
 
-            # Check if user is in waiting room
+            # Status check
             content = page.content().lower()
-            if "waiting room" in content or "waiting for the host" in content:
-                print(f"{user}: in waiting room")
+
+            if "waiting room" in content:
+                print(f"{user}: waiting room")
             else:
-                print(f"{user}: joined successfully")
+                print(f"{user}: join attempted")
 
             return context
 
@@ -83,21 +82,9 @@ class ZoomController:
     def run_zoom(cls):
         try:
             with sync_playwright() as p:
-                # Dynamically locate installed Chromium
-                chrome_candidates = glob.glob(
-                    "/opt/render/project/src/.venv/lib/python3.11/"
-                    "site-packages/playwright/driver/package/"
-                    ".local-browsers/chromium-*/chrome-linux/chrome"
-                )
 
-                if not chrome_candidates:
-                    raise Exception("Chromium executable not found")
-
-                chrome_path = chrome_candidates[0]
-                print("Using Chromium:", chrome_path)
-
+                # IMPORTANT: DO NOT check manual browser path
                 browser = p.chromium.launch(
-                    channel="chromium",
                     headless=True,
                     args=[
                         "--no-sandbox",
@@ -116,15 +103,14 @@ class ZoomController:
 
                     time.sleep(1)
 
-                print(f"{len(contexts)} users joined successfully.")
+                print(f"{len(contexts)} sessions created.")
 
-                # Keep users connected for 10 minutes
-                time.sleep(600)
+                # keep alive
+                time.sleep(300)
 
-                # Close contexts
-                for context in contexts:
+                for c in contexts:
                     try:
-                        context.close()
+                        c.close()
                     except:
                         pass
 
@@ -137,8 +123,6 @@ class ZoomController:
 
     @classmethod
     def start(cls):
-        # Run in background thread so Flask returns immediately
         thread = threading.Thread(target=cls.run_zoom, daemon=True)
         thread.start()
-
         return "Zoom automation started successfully!"
