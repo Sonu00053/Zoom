@@ -4,8 +4,10 @@ services:
     env: python
     buildCommand: |
       pip install -r requirements.txt
-      python -m playwright install chromium
+      PLAYWRIGHT_BROWSERS_PATH=0 python -m playwright install chromium
     startCommand: gunicorn app:app
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.11
+      - key: PLAYWRIGHT_BROWSERS_PATH
+        value: 0
