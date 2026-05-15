@@ -8,7 +8,7 @@ import traceback
 
 class ZoomController:
     # Zoom meeting URL
-    meeting_url = "https://app.zoom.us/wc/join/87851420305?pwd=4wF4U8"
+    meeting_url = "https://app.zoom.us/wc/join/84507049104?pwd=4059Rm"
 
     # Start with 10 users for Render
     users = [f"TestUser{i}" for i in range(1, 11)]
