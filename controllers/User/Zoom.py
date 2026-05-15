@@ -23,7 +23,6 @@ class ZoomController:
         page = context.new_page()
 
         try:
-            # block camera/mic
             page.add_init_script("""
                 Object.defineProperty(navigator, 'mediaDevices', {
                     value: {
@@ -34,81 +33,80 @@ class ZoomController:
                 });
             """)
 
-            # open zoom
             page.goto(cls.meeting_url, wait_until="domcontentloaded", timeout=60000)
 
-            page.wait_for_timeout(8000)
+            page.wait_for_timeout(12000)
 
-            # OPTIONAL: click "Join from browser"
-            try:
-                join_browser = page.locator("text=Join from Your Browser")
-                if join_browser.count() > 0:
-                    join_browser.first.click()
-                    page.wait_for_timeout(5000)
-            except:
-                pass
+            # STEP 1: try browser join button
+            join_browser = page.locator("text=Join from Your Browser")
+            if join_browser.count() > 0:
+                join_browser.first.click()
+                page.wait_for_timeout(8000)
 
-            # DEBUG (uncomment if needed)
-            # page.screenshot(path=f"debug_{user}.png", full_page=True)
+            # DEBUG snapshot (VERY IMPORTANT)
+            page.screenshot(path=f"step1_{user}.png", full_page=True)
 
-            # -------------------------
-            # FIND NAME INPUT (ROBUST)
-            # -------------------------
-            selectors = [
-                'input[name="name"]',
-                'input[placeholder*="name" i]',
-                'input[type="text"]'
-            ]
+            # STEP 2: check if we are actually on wrong page
+            html = page.content().lower()
 
+            if "download" in html or "install" in html:
+                raise Exception("Zoom redirected to app download page")
+
+            if "sign in" in html and "join" not in html:
+                raise Exception("Zoom asking sign-in (blocked flow)")
+
+            # STEP 3: more flexible input search
+            inputs = page.locator("input")
+
+            if inputs.count() == 0:
+                page.screenshot(path=f"no_input_{user}.png", full_page=True)
+                raise Exception("No input fields found on page")
+
+            # try first visible input
             name_input = None
-
-            for sel in selectors:
-                loc = page.locator(sel)
+            for i in range(min(inputs.count(), 5)):
                 try:
-                    if loc.count() > 0:
-                        loc.first.wait_for(timeout=8000)
-                        name_input = loc.first
+                    el = inputs.nth(i)
+                    if el.is_visible():
+                        name_input = el
                         break
                 except:
                     continue
 
             if not name_input:
-                page.screenshot(path=f"error_{user}.png", full_page=True)
-                raise Exception("Name input not found (Zoom UI blocked / changed)")
+                raise Exception("No visible input found")
 
             name_input.fill(user)
 
-            # -------------------------
-            # CLICK JOIN BUTTON
-            # -------------------------
-            join_button = page.locator(
-                'button:has-text("Join"), button:has-text("Join Meeting")'
-            )
+            # STEP 4: click join
+            buttons = page.locator("button")
 
-            if join_button.count() > 0:
-                join_button.first.click()
-            else:
+            clicked = False
+            for i in range(buttons.count()):
+                try:
+                    btn = buttons.nth(i)
+                    text = btn.inner_text().lower()
+                    if "join" in text:
+                        btn.click()
+                        clicked = True
+                        break
+                except:
+                    continue
+
+            if not clicked:
                 raise Exception("Join button not found")
 
             page.wait_for_timeout(8000)
 
-            # check status
-            content = page.content().lower()
-
-            if "waiting room" in content or "waiting for the host" in content:
-                print(f"{user}: in waiting room")
-            else:
-                print(f"{user}: join attempted")
+            print(f"{user}: join attempted")
 
             return context
 
         except Exception as e:
             print(f"{user}: failed -> {e}")
-            traceback.print_exc()
-            page.screenshot(path=f"fail_{user}.png", full_page=True)
+            page.screenshot(path=f"error_{user}.png", full_page=True)
             context.close()
             return None
-
     @classmethod
     def run_zoom(cls):
 
