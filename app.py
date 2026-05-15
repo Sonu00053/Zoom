@@ -17,8 +17,8 @@ try:
 except Exception:
     print("Error importing config.constant:")
     traceback.print_exc()
-    APP_NAME = "Zoom App"
-    SECRET_KEY = "secret-key"
+    APP_NAME = "uufDlinITqq0N044urKq2g"
+    SECRET_KEY = "dhWopMNouuQkXAm79M54f82mEhUv7wk7"
 
 try:
     from routes.user_routes import user_bp
