@@ -1,5 +1,6 @@
 # app.py
-# Minimal version: only website + /zoom route
+# Database aur AutoCron completely disabled.
+# Sirf website aur /zoom route chalega.
 
 import eventlet
 eventlet.monkey_patch()
@@ -8,11 +9,10 @@ from flask import Flask
 import os
 import traceback
 
-# ---------------- APP CONFIG ---------------- #
 APP_NAME = "uufDlinITqq0N044urKq2g"
 SECRET_KEY = "dhWopMNouuQkXAm79M54f82mEhUv7wk7"
 
-# ---------------- SAFE IMPORT ---------------- #
+# ---------------- IMPORT ROUTES ---------------- #
 try:
     from routes.user_routes import user_bp
 except Exception:
@@ -28,7 +28,7 @@ app.secret_key = SECRET_KEY
 if user_bp:
     app.register_blueprint(user_bp)
 
-# ---------------- ROOT ROUTE ---------------- #
+# ---------------- HOME ROUTE ---------------- #
 @app.route("/")
 def home():
     return f"{APP_NAME} is running successfully!"
