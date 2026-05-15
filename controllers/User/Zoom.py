@@ -38,11 +38,7 @@ class ZoomController:
             """)
 
             # Open Zoom web client
-            page.goto(
-                cls.meeting_url,
-                wait_until="domcontentloaded",
-                timeout=60000
-            )
+            page.goto(cls.meeting_url, wait_until="domcontentloaded", timeout=60000)
 
             page.wait_for_timeout(5000)
 
@@ -101,16 +97,13 @@ class ZoomController:
                 print("Using Chromium:", chrome_path)
 
                 browser = p.chromium.launch(
-                    executable_path=chrome_path,
+                    channel="chromium",
                     headless=True,
                     args=[
                         "--no-sandbox",
                         "--disable-setuid-sandbox",
                         "--disable-dev-shm-usage",
                         "--disable-gpu",
-                        "--disable-notifications",
-                        "--mute-audio",
-                        "--disable-blink-features=AutomationControlled",
                     ],
                 )
 
