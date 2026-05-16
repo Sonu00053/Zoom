@@ -7,7 +7,7 @@ class ZoomController:
     meeting_url = "https://app.zoom.us/wc/join/87417457133?pwd=55k88c"
 
     # Sirf 1 user test ke liye
-    users = ["ABC1"]
+    users = ["ABC2", "XYZ2", "PQR2", "LMN2", "UVW2"]
 
     @classmethod
     def join_user(cls, browser, user):
