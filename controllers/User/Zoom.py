@@ -90,4 +90,4 @@ class ZoomController:
 
 
 if __name__ == "__main__":
-    ZoomTester.run()
+    ZoomController.run()
