@@ -1,11 +1,12 @@
 # controllers/User/Zoom.py
+# Render Free Plan ke liye optimized version
+# IMPORTANT: total_users = 1 rakho, warna memory issue aayega.
 
 from playwright.sync_api import sync_playwright
 import traceback
 
 
 class ZoomController:
-    # Zoom meeting URL
     meeting_url = (
         "https://us05web.zoom.us/j/87417457133"
         "?pwd=OtxCvoT5mGn3rFYlVilSitECCaPlvl.1"
@@ -13,16 +14,14 @@ class ZoomController:
 
     @staticmethod
     def run_user(user="TestUser"):
-        """
-        Launches a headless Chromium browser and attempts to join
-        the Zoom meeting using the provided participant name.
-        """
         browser = None
         context = None
 
         try:
             with sync_playwright() as p:
-                # Launch lightweight Chromium for Render
+                print(f"Opening Zoom meeting for {user}...")
+
+                # Lightweight Chromium launch
                 browser = p.chromium.launch(
                     headless=True,
                     args=[
@@ -31,6 +30,7 @@ class ZoomController:
                         "--disable-dev-shm-usage",
                         "--disable-gpu",
                         "--no-zygote",
+                        "--single-process",
                         "--disable-extensions",
                         "--disable-background-networking",
                         "--disable-default-apps",
@@ -39,76 +39,74 @@ class ZoomController:
                     ],
                 )
 
-                # Create browser context
+                # Browser context
                 context = browser.new_context(
                     viewport={"width": 1280, "height": 720},
                     java_script_enabled=True,
-                    user_agent=(
-                        "Mozilla/5.0 (X11; Linux x86_64) "
-                        "AppleWebKit/537.36 (KHTML, like Gecko) "
-                        "Chrome/124.0.0.0 Safari/537.36"
-                    ),
                 )
 
-                # Block heavy resources to reduce memory usage
+                # Block heavy resources
                 def block_resources(route):
-                    if route.request.resource_type in ["image", "media", "font"]:
+                    if route.request.resource_type in [
+                        "image",
+                        "media",
+                        "font",
+                        "stylesheet",
+                    ]:
                         route.abort()
                     else:
                         route.continue_()
 
                 context.route("**/*", block_resources)
 
-                # Create page
                 page = context.new_page()
 
-                print(f"Opening Zoom meeting for {user}...")
-
-                # Open Zoom URL
+                # Open Zoom page quickly
                 page.goto(
                     ZoomController.meeting_url,
                     wait_until="domcontentloaded",
-                    timeout=20000,
+                    timeout=15000,
                 )
 
-                page.wait_for_timeout(2000)
+                # Short wait
+                page.wait_for_timeout(1500)
 
                 # Click "Join from your browser"
-                join_browser_selectors = [
+                selectors = [
                     "text=Join from Your Browser",
                     "text=Join from your browser",
                     "a:has-text('Join from your browser')",
                 ]
 
-                for selector in join_browser_selectors:
+                for selector in selectors:
                     try:
-                        page.locator(selector).first.click(timeout=2000)
-                        print(f"{user}: Clicked Join from your browser")
+                        page.locator(selector).first.click(timeout=1500)
+                        print(f"{user}: Clicked browser join link")
                         break
                     except:
                         pass
 
-                page.wait_for_timeout(2000)
+                page.wait_for_timeout(1500)
 
-                # Fill participant name
+                # Fill name
                 try:
-                    page.locator("input").first.fill(user, timeout=2000)
+                    page.locator("input").first.fill(user, timeout=1500)
                     print(f"{user}: Name entered")
                 except:
                     print(f"{user}: Name input not found")
 
-                # Click Join button
+                # Click Join
                 try:
-                    page.locator("button:has-text('Join')").first.click(timeout=2000)
+                    page.locator("button:has-text('Join')").first.click(timeout=1500)
                     print(f"{user}: Join button clicked")
                 except:
                     print(f"{user}: Join button not found")
 
-                # Wait for join process
-                page.wait_for_timeout(3000)
-
-                # Save screenshot for debugging
-                page.screenshot(path=f"{user}.png")
+                # Save screenshot
+                try:
+                    page.screenshot(path=f"{user}.png")
+                except:
+                    pass
 
                 print(f"{user}: Join attempted successfully")
 
@@ -133,14 +131,10 @@ class ZoomController:
 
     @staticmethod
     def start():
-        """
-        Runs multiple fake users sequentially.
-        On Render free plan, keep this between 1 and 3.
-        """
         results = []
 
-        # Number of fake users to attempt
-        total_users = 3
+        # Render free plan ke liye sirf 1 user run karo
+        total_users = 1
 
         for i in range(1, total_users + 1):
             user_name = f"TestUser{i}"
@@ -148,5 +142,4 @@ class ZoomController:
             result = ZoomController.run_user(user_name)
             results.append(result)
 
-        # Return HTML response
         return "<br>".join(results)
