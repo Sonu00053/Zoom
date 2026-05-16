@@ -8,7 +8,7 @@ class ZoomController:
     user_name = "TestUser"
 
     @classmethod
-    def run(cls):
+    def start(cls):
 
         with sync_playwright() as p:
 
@@ -90,4 +90,4 @@ class ZoomController:
 
 
 if __name__ == "__main__":
-    ZoomController.run()
+    ZoomController.start()
