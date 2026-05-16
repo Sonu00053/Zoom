@@ -1,7 +1,6 @@
 from flask import Flask
 import os
-
-from controllers.Zoom import ZoomController
+from controllers.User.Zoom import ZoomController
 
 app = Flask(__name__)
 
