@@ -5,10 +5,7 @@ import time
 
 
 class ZoomController:
-    # Zoom Meeting URL
     meeting_url = "https://app.zoom.us/wc/join/87417457133?pwd=55k88c"
-
-    # Bot users
     users = ["ABC2"]
 
     @classmethod
@@ -19,6 +16,11 @@ class ZoomController:
             viewport={"width": 1280, "height": 720},
             permissions=[],
             java_script_enabled=True,
+            user_agent=(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/137.0.0.0 Safari/537.36"
+            ),
         )
 
         page = context.new_page()
@@ -33,6 +35,10 @@ class ZoomController:
                         }
                     }
                 });
+
+                Object.defineProperty(navigator, 'webdriver', {
+                    get: () => undefined
+                });
             """)
 
             # Open Zoom URL
@@ -42,10 +48,10 @@ class ZoomController:
                 timeout=60000
             )
 
-            # Wait for page load
-            page.wait_for_timeout(5000)
+            # Initial wait
+            page.wait_for_timeout(8000)
 
-            # Click "Join from Your Browser" if available
+            # Click browser join link if present
             browser_selectors = [
                 'a:has-text("Join from Your Browser")',
                 'a:has-text("join from your browser")',
@@ -57,51 +63,58 @@ class ZoomController:
             for selector in browser_selectors:
                 try:
                     locator = page.locator(selector).first
-                    if locator.is_visible():
+                    if locator.count() > 0 and locator.is_visible():
                         locator.click()
                         print("Clicked browser join link")
-                        page.wait_for_timeout(5000)
+                        page.wait_for_timeout(8000)
                         break
                 except Exception:
                     pass
 
-            # Wait until network is idle
+            # Wait until page fully loads
             page.wait_for_load_state("networkidle", timeout=30000)
 
-            # Debug logs
             print("Current URL:", page.url)
             print("Page Title:", page.title())
 
-            # Name input selectors
-            name_selectors = [
-                'input#input-for-name',
-                'input[name="inputname"]',
-                'input[name="username"]',
-                'input[name="name"]',
-                'input[placeholder*="name" i]',
-                'input[type="text"]',
-            ]
-
+            # Try for up to 60 seconds to find the name input
             name_box = None
-            for selector in name_selectors:
-                try:
-                    locator = page.locator(selector).first
-                    if locator.is_visible(timeout=5000):
-                        name_box = locator
-                        print(f"Name field found with selector: {selector}")
-                        break
-                except Exception:
-                    pass
+            for _ in range(12):  # 12 × 5 sec = 60 sec
+                name_selectors = [
+                    'input#input-for-name',
+                    'input[name="inputname"]',
+                    'input[name="username"]',
+                    'input[name="name"]',
+                    'input[placeholder*="name" i]',
+                    'input[type="text"]',
+                ]
+
+                for selector in name_selectors:
+                    try:
+                        locator = page.locator(selector).first
+                        if locator.count() > 0 and locator.is_visible():
+                            name_box = locator
+                            print(f"Name field found with selector: {selector}")
+                            break
+                    except Exception:
+                        pass
+
+                if name_box:
+                    break
+
+                print("Name field not found yet, waiting 5 seconds...")
+                page.wait_for_timeout(5000)
 
             if not name_box:
                 page.screenshot(path=f"{user}_debug.png")
+                print(page.content()[:5000])
                 raise Exception("Name input field not found")
 
             # Fill participant name
             name_box.fill(user)
-            page.wait_for_timeout(1000)
+            page.wait_for_timeout(2000)
 
-            # Join button selectors
+            # Click Join button
             join_selectors = [
                 'button:has-text("Join")',
                 'button:has-text("Join Meeting")',
@@ -112,7 +125,7 @@ class ZoomController:
             for selector in join_selectors:
                 try:
                     btn = page.locator(selector).first
-                    if btn.is_visible():
+                    if btn.count() > 0 and btn.is_visible():
                         btn.click()
                         joined = True
                         print(f"{user}: Join button clicked")
@@ -124,10 +137,12 @@ class ZoomController:
                 page.screenshot(path=f"{user}_join_debug.png")
                 raise Exception("Join button not found")
 
+            # Wait to enter meeting
+            page.wait_for_timeout(15000)
+
             print(f"{user}: Joined successfully")
 
-            # Keep bot in Zoom meeting for 30 minutes
-            # 30 min = 30 × 60 × 1000 = 1,800,000 ms
+            # Stay connected for 30 minutes
             page.wait_for_timeout(1800000)
 
             context.close()
@@ -172,7 +187,6 @@ class ZoomController:
                 for user in cls.users:
                     if cls.join_user(browser, user):
                         joined_users.append(user)
-
                     time.sleep(1)
 
                 browser.close()
@@ -181,7 +195,7 @@ class ZoomController:
                 "status": "success",
                 "joined_count": len(joined_users),
                 "joined_users": joined_users,
-                "duration": "30 minutes"
+                "duration": "30 minutes",
             }
 
         except Exception as e:
