@@ -16,7 +16,7 @@ class ZoomController:
         try:
             with sync_playwright() as p:
                 browser = p.chromium.launch(
-                    headless=True,  # REQUIRED on Render
+                    headless=True,
                     args=[
                         "--no-sandbox",
                         "--disable-setuid-sandbox",
@@ -40,53 +40,52 @@ class ZoomController:
                 page = context.new_page()
 
                 print(f"Opening Zoom meeting for {user}...")
-                page.goto(ZoomController.meeting_url, timeout=90000)
-                page.wait_for_timeout(8000)
 
-                # Click "Join from your browser"
-                join_browser_selectors = [
+                # Faster timeout to avoid Gunicorn worker timeout
+                page.goto(
+                    ZoomController.meeting_url,
+                    wait_until="domcontentloaded",
+                    timeout=30000,
+                )
+
+                page.wait_for_timeout(3000)
+
+                # Try to click Join from browser link
+                selectors = [
                     "text=Join from Your Browser",
                     "text=Join from your browser",
                     "a:has-text('Join from your browser')",
                 ]
 
-                for selector in join_browser_selectors:
+                for selector in selectors:
                     try:
-                        page.locator(selector).first.click(timeout=5000)
+                        page.locator(selector).first.click(timeout=3000)
                         print("Clicked Join from your browser")
                         break
                     except:
                         pass
 
-                page.wait_for_timeout(5000)
+                page.wait_for_timeout(3000)
 
                 # Fill participant name
                 try:
-                    page.locator("input").first.fill(user)
+                    page.locator("input").first.fill(user, timeout=3000)
                     print("Name entered")
                 except Exception as e:
                     print("Name input not found:", e)
 
                 # Click Join button
-                join_button_selectors = [
-                    "button:has-text('Join')",
-                    "button:has-text('Join Meeting')",
-                ]
+                try:
+                    page.locator("button:has-text('Join')").first.click(timeout=3000)
+                    print("Join button clicked")
+                except Exception as e:
+                    print("Join button not found:", e)
 
-                for selector in join_button_selectors:
-                    try:
-                        page.locator(selector).first.click(timeout=5000)
-                        print("Join button clicked")
-                        break
-                    except:
-                        pass
-
-                page.wait_for_timeout(10000)
+                page.wait_for_timeout(5000)
 
                 # Save screenshot for debugging
                 page.screenshot(path=f"{user}.png", full_page=True)
 
-                print(f"{user} join attempted successfully")
                 return f"{user} join attempted successfully"
 
         except Exception as e:
