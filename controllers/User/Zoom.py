@@ -2,7 +2,7 @@ from playwright.sync_api import sync_playwright
 import time
 
 
-class ZoomTester:
+class ZoomController:
 
     meeting_url = "https://us05web.zoom.us/wc/join/84507049104?pwd=3PtVVMpyq11H6UFG81bawvwm0snLbr.1"
     user_name = "TestUser"
