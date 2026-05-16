@@ -1,145 +1,122 @@
-# controllers/User/Zoom.py
-# Render Free Plan ke liye optimized version
-# IMPORTANT: total_users = 1 rakho, warna memory issue aayega.
-
 from playwright.sync_api import sync_playwright
-import traceback
+import time
 
 
 class ZoomController:
-    meeting_url = (
-        "https://us05web.zoom.us/j/87417457133"
-        "?pwd=OtxCvoT5mGn3rFYlVilSitECCaPlvl.1"
-    )
+    # Zoom meeting URL
+    meeting_url = "https://app.zoom.us/wc/join/87417457133?pwd=55k88c"
 
-    @staticmethod
-    def run_user(user="TestUser"):
-        browser = None
-        context = None
+    # Har run me 50 naye users
+    users = [f"TestUser{i}" for i in range(1, 6)]
+
+    @classmethod
+    def join_user(cls, browser, user):
+        print(f"Joining {user}...")
+
+        # Har user ke liye alag browser context
+        context = browser.new_context(
+            permissions=[],  # camera/mic permissions deny
+            viewport={"width": 1280, "height": 720},
+        )
+
+        page = context.new_page()
 
         try:
-            with sync_playwright() as p:
-                print(f"Opening Zoom meeting for {user}...")
+            # Camera/mic API disable
+            page.add_init_script("""
+                Object.defineProperty(navigator, 'mediaDevices', {
+                    value: {
+                        getUserMedia: async () => {
+                            throw new Error('Media disabled');
+                        }
+                    }
+                });
+            """)
 
-                # Lightweight Chromium launch
-                browser = p.chromium.launch(
-                    headless=True,
-                    args=[
-                        "--no-sandbox",
-                        "--disable-setuid-sandbox",
-                        "--disable-dev-shm-usage",
-                        "--disable-gpu",
-                        "--no-zygote",
-                        "--single-process",
-                        "--disable-extensions",
-                        "--disable-background-networking",
-                        "--disable-default-apps",
-                        "--disable-sync",
-                        "--mute-audio",
-                    ],
-                )
+            # Zoom web client open
+            page.goto(
+                cls.meeting_url,
+                wait_until="domcontentloaded",
+                timeout=45000
+            )
 
-                # Browser context
-                context = browser.new_context(
-                    viewport={"width": 1280, "height": 720},
-                    java_script_enabled=True,
-                )
+            # Name input wait
+            page.wait_for_selector('input[type="text"]', timeout=15000)
 
-                # Block heavy resources
-                def block_resources(route):
-                    if route.request.resource_type in [
-                        "image",
-                        "media",
-                        "font",
-                        "stylesheet",
-                    ]:
-                        route.abort()
-                    else:
-                        route.continue_()
+            # Participant name fill
+            page.locator('input[type="text"]').first.fill(user)
 
-                context.route("**/*", block_resources)
+            # Join button click
+            page.locator(
+                'button:has-text("Join"), '
+                'button:has-text("Join Meeting")'
+            ).first.click()
 
-                page = context.new_page()
+            print(f"{user}: Join submitted")
 
-                # Open Zoom page quickly
-                page.goto(
-                    ZoomController.meeting_url,
-                    wait_until="domcontentloaded",
-                    timeout=15000,
-                )
+            # Secondary dialogs handle
+            page.wait_for_timeout(3000)
 
-                # Short wait
-                page.wait_for_timeout(1500)
+            selectors = [
+                'button:has-text("Got it")',
+                'button:has-text("OK")',
+                'button:has-text("Cancel")',
+            ]
 
-                # Click "Join from your browser"
-                selectors = [
-                    "text=Join from Your Browser",
-                    "text=Join from your browser",
-                    "a:has-text('Join from your browser')",
-                ]
-
-                for selector in selectors:
-                    try:
-                        page.locator(selector).first.click(timeout=1500)
-                        print(f"{user}: Clicked browser join link")
-                        break
-                    except:
-                        pass
-
-                page.wait_for_timeout(1500)
-
-                # Fill name
+            for selector in selectors:
                 try:
-                    page.locator("input").first.fill(user, timeout=1500)
-                    print(f"{user}: Name entered")
-                except:
-                    print(f"{user}: Name input not found")
-
-                # Click Join
-                try:
-                    page.locator("button:has-text('Join')").first.click(timeout=1500)
-                    print(f"{user}: Join button clicked")
-                except:
-                    print(f"{user}: Join button not found")
-
-                # Save screenshot
-                try:
-                    page.screenshot(path=f"{user}.png")
-                except:
+                    btn = page.locator(selector)
+                    if btn.count() > 0 and btn.first.is_visible():
+                        btn.first.click()
+                        page.wait_for_timeout(500)
+                except Exception:
                     pass
 
-                print(f"{user}: Join attempted successfully")
-
-                return f"{user} join attempted successfully"
+            print(f"{user}: Joined successfully")
+            return context  # Context open rakho
 
         except Exception as e:
-            traceback.print_exc()
-            return f"{user} failed: {str(e)}"
+            print(f"{user}: Failed -> {e}")
+            context.close()
+            return None
 
-        finally:
-            try:
+    @classmethod
+    def start(cls):
+        with sync_playwright() as p:
+            # Headless mode => koi tab visible nahi
+            browser = p.chromium.launch(
+                headless=True,
+                args=[
+                    "--mute-audio",
+                    "--disable-notifications",
+                    "--disable-popup-blocking",
+                    "--disable-infobars",
+                    "--no-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-gpu",
+                ],
+            )
+
+            contexts = []
+
+            for user in cls.users:
+                context = cls.join_user(browser, user)
                 if context:
-                    context.close()
-            except:
-                pass
+                    contexts.append(context)
+
+                # Thoda fast joining
+                time.sleep(0.2)
+
+            print(f"\n{len(contexts)} participants joined successfully.")
+            print("Press Ctrl+C to stop and disconnect all users.")
 
             try:
-                if browser:
-                    browser.close()
-            except:
-                pass
+                while True:
+                    time.sleep(60)
+            except KeyboardInterrupt:
+                print("\nClosing browser...")
+                browser.close()
 
-    @staticmethod
-    def start():
-        results = []
 
-        # Render free plan ke liye sirf 1 user run karo
-        total_users = 1
-
-        for i in range(1, total_users + 1):
-            user_name = f"TestUser{i}"
-            print(f"Starting {user_name}...")
-            result = ZoomController.run_user(user_name)
-            results.append(result)
-
-        return "<br>".join(results)
+if __name__ == "__main__":
+    ZoomController.start()
