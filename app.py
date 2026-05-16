@@ -3,7 +3,7 @@ from flask import Flask
 import os
 
 app = Flask(__name__)
-app.secret_key = "zdhWopMNouuQkXAm79M54f82mEhUv7wk7"
+app.secret_key = "WW8jhK8V79ErRDn5pr7ic4xwe7ZldPbr"
 
 # Import blueprint safely
 try:
