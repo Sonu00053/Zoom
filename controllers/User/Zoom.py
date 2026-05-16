@@ -1,3 +1,4 @@
+# controllers/User/Zoom.py
 from playwright.sync_api import sync_playwright
 import time
 
@@ -6,7 +7,7 @@ class ZoomController:
     # Zoom meeting URL
     meeting_url = "https://app.zoom.us/wc/join/87417457133?pwd=55k88c"
 
-    # Sirf 1 user test ke liye
+    # Test users
     users = ["ABC2"]
 
     @classmethod
@@ -22,7 +23,7 @@ class ZoomController:
         page = context.new_page()
 
         try:
-            # Camera/Mic disable
+            # Disable camera and microphone
             page.add_init_script("""
                 Object.defineProperty(navigator, 'mediaDevices', {
                     value: {
@@ -33,14 +34,14 @@ class ZoomController:
                 });
             """)
 
-            # Zoom page open
+            # Open Zoom page
             page.goto(
                 cls.meeting_url,
                 wait_until="domcontentloaded",
                 timeout=60000
             )
 
-            # "Join from Your Browser" link handle
+            # Click "Join from Your Browser"
             try:
                 browser_link = page.locator(
                     'a:has-text("Join from Your Browser"), '
@@ -52,7 +53,7 @@ class ZoomController:
             except Exception:
                 pass
 
-            # Name input selectors
+            # Find name input
             name_selectors = [
                 'input#input-for-name',
                 'input[name="name"]',
@@ -74,10 +75,10 @@ class ZoomController:
             if not name_box:
                 raise Exception("Name input field not found")
 
-            # Fill participant name
+            # Fill name
             name_box.fill(user)
 
-            # Join button selectors
+            # Click Join
             join_selectors = [
                 'button:has-text("Join")',
                 'button:has-text("Join Meeting")',
@@ -100,7 +101,7 @@ class ZoomController:
 
             print(f"{user}: Joined successfully")
 
-            # Meeting ko 10 seconds tak open rakho
+            # Keep open for 10 seconds
             page.wait_for_timeout(10000)
 
             context.close()
@@ -141,7 +142,6 @@ class ZoomController:
                     if cls.join_user(browser, user):
                         joined_users.append(user)
 
-                    # Chhota delay
                     time.sleep(1)
 
                 browser.close()
@@ -157,7 +157,3 @@ class ZoomController:
                 "status": "error",
                 "message": str(e),
             }
-
-
-if __name__ == "__main__":
-    print(ZoomController.start())

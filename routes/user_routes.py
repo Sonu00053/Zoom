@@ -1,8 +1,10 @@
 # routes/user_routes.py
-
-from flask import Blueprint
+from fastapi import APIRouter
 from controllers.User.Zoom import ZoomController
-user_bp = Blueprint("user_bp", __name__)
-@user_bp.route("/zoom")
+
+router = APIRouter()
+
+
+@router.get("/zoom")
 def zoom():
     return ZoomController.start()

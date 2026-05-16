@@ -1,30 +1,23 @@
 # app.py
+from fastapi import FastAPI
+from controllers.User.Zoom import ZoomController
 
-from flask import Flask
-import os
-
-app = Flask(__name__)
-app.secret_key = "WW8jhK8V79ErRDn5pr7ic4xwe7ZldPbr"
-
-# Register blueprint
-from routes.user_routes import user_bp
-app.register_blueprint(user_bp)
+app = FastAPI(
+    title="Zoom Automation API",
+    version="1.0.0"
+)
 
 
-@app.route("/")
+@app.get("/")
 def home():
-    return "Zoom Automation Server is Running!"
+    return {"message": "Zoom Automation Server is Running!"}
 
 
-@app.route("/health")
+@app.get("/health")
 def health():
     return {"status": "ok"}
 
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(
-        host="0.0.0.0",
-        port=port,
-        debug=False
-    )
+@app.get("/zoom")
+def zoom():
+    return ZoomController.start()
