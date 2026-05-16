@@ -1,156 +1,59 @@
 from playwright.sync_api import sync_playwright
-import threading
 import time
-import traceback
-
 
 class ZoomController:
 
-    meeting_url = "https://us05web.zoom.us/wc/join/84507049104?pwd=3PtVVMpyq11H6UFG81bawvwm0snLbr.1"
+    meeting_url = "https://us05web.zoom.us/j/87417457133?pwd=OtxCvoT5mGn3rFYlVilSitECCaPlvl.1"
 
-    users = [f"TestUser{i}" for i in range(1, 11)]
+    @staticmethod
+    def run_user(user="TestUser"):
 
-    @classmethod
-    def join_user(cls, browser, user):
+        with sync_playwright() as p:
 
-        print(f"Joining {user}...")
+            browser = p.chromium.launch(
+                headless=False,  # important for Zoom stability
+                args=[
+                    "--disable-blink-features=AutomationControlled"
+                ]
+            )
 
-        context = browser.new_context(
-            viewport={"width": 1280, "height": 720},
-            permissions=[],
-        )
+            context = browser.new_context()
+            page = context.new_page()
 
-        page = context.new_page()
+            try:
+                page.goto(ZoomController.meeting_url, timeout=60000)
 
-        try:
-            page.add_init_script("""
-                Object.defineProperty(navigator, 'mediaDevices', {
-                    value: {
-                        getUserMedia: async () => {
-                            throw new Error('Media disabled');
-                        }
-                    }
-                });
-            """)
-
-            page.goto(cls.meeting_url, wait_until="domcontentloaded", timeout=60000)
-
-            page.wait_for_timeout(12000)
-
-            # STEP 1: try browser join button
-            join_browser = page.locator("text=Join from Your Browser")
-            if join_browser.count() > 0:
-                join_browser.first.click()
                 page.wait_for_timeout(8000)
 
-            # DEBUG snapshot (VERY IMPORTANT)
-            page.screenshot(path=f"step1_{user}.png", full_page=True)
-
-            # STEP 2: check if we are actually on wrong page
-            html = page.content().lower()
-
-            if "download" in html or "install" in html:
-                raise Exception("Zoom redirected to app download page")
-
-            if "sign in" in html and "join" not in html:
-                raise Exception("Zoom asking sign-in (blocked flow)")
-
-            # STEP 3: more flexible input search
-            inputs = page.locator("input")
-
-            if inputs.count() == 0:
-                page.screenshot(path=f"no_input_{user}.png", full_page=True)
-                raise Exception("No input fields found on page")
-
-            # try first visible input
-            name_input = None
-            for i in range(min(inputs.count(), 5)):
+                # join from browser (if available)
                 try:
-                    el = inputs.nth(i)
-                    if el.is_visible():
-                        name_input = el
-                        break
+                    page.get_by_text("Join from your browser", exact=False).click(timeout=5000)
                 except:
-                    continue
+                    pass
 
-            if not name_input:
-                raise Exception("No visible input found")
+                page.wait_for_timeout(5000)
 
-            name_input.fill(user)
+                # fill name
+                name_input = page.locator("input:visible").first
+                name_input.fill(user)
 
-            # STEP 4: click join
-            buttons = page.locator("button")
+                # click join
+                join_btn = page.locator("button:has-text('Join')").first
+                join_btn.click()
 
-            clicked = False
-            for i in range(buttons.count()):
-                try:
-                    btn = buttons.nth(i)
-                    text = btn.inner_text().lower()
-                    if "join" in text:
-                        btn.click()
-                        clicked = True
-                        break
-                except:
-                    continue
+                page.wait_for_timeout(10000)
 
-            if not clicked:
-                raise Exception("Join button not found")
+                print("Joined successfully")
 
-            page.wait_for_timeout(8000)
+            except Exception as e:
+                print("Error:", e)
+                page.screenshot(path="error.png", full_page=True)
 
-            print(f"{user}: join attempted")
-
-            return context
-
-        except Exception as e:
-            print(f"{user}: failed -> {e}")
-            page.screenshot(path=f"error_{user}.png", full_page=True)
-            context.close()
-            return None
-    @classmethod
-    def run_zoom(cls):
-
-        try:
-            with sync_playwright() as p:
-
-                browser = p.chromium.launch(
-                    headless=True,
-                    args=[
-                        "--no-sandbox",
-                        "--disable-setuid-sandbox",
-                        "--disable-dev-shm-usage",
-                        "--disable-gpu",
-                    ],
-                )
-
-                contexts = []
-
-                for user in cls.users:
-                    ctx = cls.join_user(browser, user)
-                    if ctx:
-                        contexts.append(ctx)
-
-                    time.sleep(1)
-
-                print(f"{len(contexts)} users processed.")
-
-                time.sleep(600)
-
-                for c in contexts:
-                    try:
-                        c.close()
-                    except:
-                        pass
-
+            finally:
+                context.close()
                 browser.close()
-                print("Browser closed")
 
-        except Exception as e:
-            print("ZoomController Error:", e)
-            traceback.print_exc()
-
-    @classmethod
-    def start(cls):
-        thread = threading.Thread(target=cls.run_zoom, daemon=True)
-        thread.start()
-        return "Zoom automation started"
+    @staticmethod
+    def start():
+        ZoomController.run_user("TestUser")
+        return "Zoom join attempted"
