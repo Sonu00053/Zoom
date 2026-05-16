@@ -5,7 +5,10 @@ import time
 
 
 class ZoomController:
+    # Zoom Meeting URL
     meeting_url = "https://app.zoom.us/wc/join/87417457133?pwd=55k88c"
+
+    # Bot users
     users = ["ABC2"]
 
     @classmethod
@@ -33,10 +36,16 @@ class ZoomController:
             """)
 
             # Open Zoom URL
-            page.goto(cls.meeting_url, wait_until="domcontentloaded", timeout=60000)
+            page.goto(
+                cls.meeting_url,
+                wait_until="domcontentloaded",
+                timeout=60000
+            )
+
+            # Wait for page load
             page.wait_for_timeout(5000)
 
-            # If redirected to launch page, click "Join from Your Browser"
+            # Click "Join from Your Browser" if available
             browser_selectors = [
                 'a:has-text("Join from Your Browser")',
                 'a:has-text("join from your browser")',
@@ -56,10 +65,10 @@ class ZoomController:
                 except Exception:
                     pass
 
-            # Wait until input appears
+            # Wait until network is idle
             page.wait_for_load_state("networkidle", timeout=30000)
 
-            # Debug page title/url
+            # Debug logs
             print("Current URL:", page.url)
             print("Page Title:", page.title())
 
@@ -85,11 +94,10 @@ class ZoomController:
                     pass
 
             if not name_box:
-                # Save screenshot for debugging
                 page.screenshot(path=f"{user}_debug.png")
                 raise Exception("Name input field not found")
 
-            # Fill user name
+            # Fill participant name
             name_box.fill(user)
             page.wait_for_timeout(1000)
 
@@ -118,22 +126,26 @@ class ZoomController:
 
             print(f"{user}: Joined successfully")
 
-            # Stay in meeting for 10 seconds
-            page.wait_for_timeout(10000)
+            # Keep bot in Zoom meeting for 30 minutes
+            # 30 min = 30 × 60 × 1000 = 1,800,000 ms
+            page.wait_for_timeout(1800000)
 
             context.close()
             return True
 
         except Exception as e:
             print(f"{user}: Failed -> {e}")
+
             try:
                 page.screenshot(path=f"{user}_error.png")
             except Exception:
                 pass
+
             try:
                 context.close()
             except Exception:
                 pass
+
             return False
 
     @classmethod
@@ -160,6 +172,7 @@ class ZoomController:
                 for user in cls.users:
                     if cls.join_user(browser, user):
                         joined_users.append(user)
+
                     time.sleep(1)
 
                 browser.close()
@@ -168,6 +181,7 @@ class ZoomController:
                 "status": "success",
                 "joined_count": len(joined_users),
                 "joined_users": joined_users,
+                "duration": "30 minutes"
             }
 
         except Exception as e:
