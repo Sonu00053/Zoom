@@ -1,16 +1,17 @@
 # controllers/User/Zoom.py
+
 from playwright.sync_api import sync_playwright
 import time
 
 
 class ZoomController:
-    # Zoom web client join link
+    # Zoom Web Client join URL
     meeting_url = "https://app.zoom.us/wc/join/9779246549?pwd=UezT5M"
 
-    # Names to join with
+    # Participants to join
     users = ["ABC2"]
 
-    # Stay in meeting (30 minutes)
+    # Stay in meeting for 30 minutes
     stay_ms = 30 * 60 * 1000
 
     @classmethod
@@ -19,6 +20,7 @@ class ZoomController:
 
         context = browser.new_context(
             viewport={"width": 1366, "height": 768},
+            permissions=[],
             java_script_enabled=True,
             user_agent=(
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -30,14 +32,14 @@ class ZoomController:
         page = context.new_page()
 
         try:
-            # Reduce automation detection
+            # Hide webdriver flag
             page.add_init_script("""
                 Object.defineProperty(navigator, 'webdriver', {
                     get: () => undefined
                 });
             """)
 
-            # Open Zoom link
+            # Open meeting page
             page.goto(
                 cls.meeting_url,
                 wait_until="domcontentloaded",
@@ -46,26 +48,40 @@ class ZoomController:
 
             page.wait_for_timeout(10000)
 
-            # Click "Join from Your Browser" if shown
+            # Click "Join from Your Browser" if available
             for selector in [
-                'text="Join from Your Browser"',
-                'text="join from your browser"',
-                'text="Launch Meeting"',
+                'a:has-text("Join from Your Browser")',
+                'button:has-text("Join from Your Browser")',
+                'a:has-text("join from your browser")',
+                'button:has-text("Launch Meeting")',
             ]:
                 try:
-                    page.locator(selector).first.click(timeout=5000)
-                    print("Clicked browser join link")
-                    page.wait_for_timeout(8000)
-                    break
-                except:
+                    locator = page.locator(selector).first
+                    if locator.count() > 0:
+                        locator.click(force=True, timeout=5000)
+                        print("Clicked browser join link")
+                        page.wait_for_timeout(8000)
+                        break
+                except Exception:
                     pass
 
-            # Wait a bit instead of networkidle (Zoom keeps connections open)
+            # Give Zoom time to render join form
             page.wait_for_timeout(8000)
 
-            # Fill visible text input with participant name
+            print("Current URL:", page.url)
+            print("Page Title:", page.title())
+
+            # Fill participant name
             name_filled = False
-            inputs = page.locator('input[type="text"], input:not([type])')
+            inputs = page.locator(
+                'input#input-for-name, '
+                'input[name="inputname"], '
+                'input[name="username"], '
+                'input[name="name"], '
+                'input[placeholder*="name" i], '
+                'input[type="text"], '
+                'input:not([type])'
+            )
 
             for i in range(inputs.count()):
                 try:
@@ -75,7 +91,7 @@ class ZoomController:
                         print(f"{user}: Name filled")
                         name_filled = True
                         break
-                except:
+                except Exception:
                     pass
 
             if not name_filled:
@@ -84,33 +100,59 @@ class ZoomController:
 
             page.wait_for_timeout(2000)
 
+            # Close any popup/modal if present
+            for selector in [
+                'button[aria-label="Close"]',
+                'button:has-text("Got It")',
+                'button:has-text("OK")',
+                'button:has-text("Cancel")',
+                'button:has-text("Close")',
+            ]:
+                try:
+                    popup_btn = page.locator(selector).first
+                    if popup_btn.count() > 0 and popup_btn.is_visible():
+                        popup_btn.click(force=True, timeout=2000)
+                        print("Popup closed")
+                        page.wait_for_timeout(1000)
+                        break
+                except Exception:
+                    pass
+
             # Click Join button
             joined = False
+
             for selector in [
+                'button.preview-join-button',
                 'button:has-text("Join")',
                 'button:has-text("Join Meeting")',
                 'button[type="submit"]',
             ]:
                 try:
                     btn = page.locator(selector).first
-                    if btn.is_visible():
-                        btn.click()
-                        print(f"{user}: Join clicked")
+
+                    if btn.count() > 0:
+                        try:
+                            btn.click(force=True, timeout=10000)
+                        except Exception:
+                            # Fallback to JS click
+                            btn.evaluate("el => el.click()")
+
+                        print(f"{user}: Join button clicked")
                         joined = True
                         break
-                except:
-                    pass
+                except Exception as e:
+                    print(f"Join selector failed: {selector} -> {e}")
 
             if not joined:
                 page.screenshot(path=f"{user}_join_not_found.png")
                 raise Exception("Join button not found")
 
-            # Wait for admission / meeting screen
+            # Wait to enter meeting / waiting room
             page.wait_for_timeout(15000)
 
             print(f"{user}: Joined successfully")
 
-            # Stay in meeting for 30 minutes
+            # Stay connected for 30 minutes
             page.wait_for_timeout(cls.stay_ms)
 
             context.close()
@@ -121,12 +163,12 @@ class ZoomController:
 
             try:
                 page.screenshot(path=f"{user}_error.png")
-            except:
+            except Exception:
                 pass
 
             try:
                 context.close()
-            except:
+            except Exception:
                 pass
 
             return False
