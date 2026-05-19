@@ -1,11 +1,9 @@
-# controllers/User/Zoom.py
-
 from playwright.sync_api import sync_playwright
 import time
 
 
 class ZoomController:
-    meeting_url = "https://app.zoom.us/wc/join/87417457133?pwd=55k88c"
+    meeting_url = "https://app.zoom.us/wc/join/9779246549?pwd=UezT5M"
     users = ["ABC2"]
 
     @classmethod
@@ -41,14 +39,13 @@ class ZoomController:
                 });
             """)
 
-            # Open Zoom URL
+            # Open meeting URL
             page.goto(
                 cls.meeting_url,
                 wait_until="domcontentloaded",
-                timeout=60000
+                timeout=60000,
             )
 
-            # Initial wait
             page.wait_for_timeout(8000)
 
             # Click browser join link if present
@@ -71,16 +68,16 @@ class ZoomController:
                 except Exception:
                     pass
 
-            # Wait until page fully loads
             page.wait_for_load_state("networkidle", timeout=30000)
 
             print("Current URL:", page.url)
             print("Page Title:", page.title())
 
-            # Try for up to 60 seconds to find the name input
+            # Wait up to 60 seconds for name field
             name_box = None
-            for _ in range(12):  # 12 × 5 sec = 60 sec
-                name_selectors = [
+
+            for _ in range(12):
+                selectors = [
                     'input#input-for-name',
                     'input[name="inputname"]',
                     'input[name="username"]',
@@ -89,7 +86,7 @@ class ZoomController:
                     'input[type="text"]',
                 ]
 
-                for selector in name_selectors:
+                for selector in selectors:
                     try:
                         locator = page.locator(selector).first
                         if locator.count() > 0 and locator.is_visible():
@@ -106,11 +103,9 @@ class ZoomController:
                 page.wait_for_timeout(5000)
 
             if not name_box:
-                page.screenshot(path=f"{user}_debug.png")
-                print(page.content()[:5000])
                 raise Exception("Name input field not found")
 
-            # Fill participant name
+            # Fill name
             name_box.fill(user)
             page.wait_for_timeout(2000)
 
@@ -122,6 +117,7 @@ class ZoomController:
             ]
 
             joined = False
+
             for selector in join_selectors:
                 try:
                     btn = page.locator(selector).first
@@ -134,7 +130,6 @@ class ZoomController:
                     pass
 
             if not joined:
-                page.screenshot(path=f"{user}_join_debug.png")
                 raise Exception("Join button not found")
 
             # Wait to enter meeting
@@ -142,7 +137,7 @@ class ZoomController:
 
             print(f"{user}: Joined successfully")
 
-            # Stay connected for 30 minutes
+            # Stay in meeting for 30 minutes
             page.wait_for_timeout(1800000)
 
             context.close()
@@ -191,6 +186,13 @@ class ZoomController:
 
                 browser.close()
 
+            print({
+                "status": "success",
+                "joined_count": len(joined_users),
+                "joined_users": joined_users,
+                "duration": "30 minutes",
+            })
+
             return {
                 "status": "success",
                 "joined_count": len(joined_users),
@@ -199,6 +201,11 @@ class ZoomController:
             }
 
         except Exception as e:
+            print({
+                "status": "error",
+                "message": str(e),
+            })
+
             return {
                 "status": "error",
                 "message": str(e),

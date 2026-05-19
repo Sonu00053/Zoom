@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Zoom Bot Form</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #111;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .box {
+            background: #222;
+            padding: 30px;
+            border-radius: 10px;
+            width: 300px;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background: green;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div class="box">
+    <h2>Zoom Bot Form</h2>
+
+    <form method="POST" action="/start">
+        <input type="text" name="meeting_id" placeholder="Meeting ID" required>
+
+        <input type="text" name="password" placeholder="Password" required>
+
+        <input type="text" name="user_name" placeholder="User Name" required>
+
+        <button type="submit">Start Bot</button>
+    </form>
+</div>
+
+</body>
+</html>
