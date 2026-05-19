@@ -20,6 +20,7 @@ class ZoomController:
     def join_user(cls, browser, user):
         print(f"Joining {user}...")
 
+
         context = browser.new_context(
             viewport={"width": 1366, "height": 768},
             java_script_enabled=True,
