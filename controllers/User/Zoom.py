@@ -3,212 +3,97 @@ import time
 
 
 class ZoomController:
-    # meeting_url can be WC/JOIN link
+
     meeting_url = "https://app.zoom.us/wc/join/9779246549?pwd=UezT5M"
-    # add multiple names here
     users = ["ABC2"]
 
     @classmethod
     def join_user(cls, browser, user):
-        print(f"Joining {user}...")
 
         context = browser.new_context(
             viewport={"width": 1280, "height": 720},
-            permissions=[],
             java_script_enabled=True,
-            user_agent=(
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/137.0.0.0 Safari/537.36"
-            ),
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120 Safari/537.36",
         )
 
         page = context.new_page()
 
         try:
-            # Disable camera and microphone
-            page.add_init_script("""
-                Object.defineProperty(navigator, 'mediaDevices', {
-                    value: {
-                        getUserMedia: async () => {
-                            throw new Error('Media disabled');
-                        }
-                    }
-                });
+            page.goto(cls.meeting_url, wait_until="domcontentloaded", timeout=60000)
+            page.wait_for_timeout(10000)
 
-                Object.defineProperty(navigator, 'webdriver', {
-                    get: () => undefined
-                });
-            """)
-
-            # Open meeting URL
-            page.goto(
-                cls.meeting_url,
-                wait_until="domcontentloaded",
-                timeout=60000,
-            )
+            # click join from browser
+            try:
+                page.click("text=Join from Your Browser", timeout=15000)
+            except:
+                pass
 
             page.wait_for_timeout(8000)
 
-            # Click browser join link if present
-            browser_selectors = [
-                'a:has-text("Join from Your Browser")',
-                'a:has-text("join from your browser")',
-                'button:has-text("Join from Your Browser")',
-                'button:has-text("Launch Meeting")',
-                'a[href*="wc/join"]',
-            ]
+            # find input
+            inputs = page.locator("input")
 
-            for selector in browser_selectors:
-                try:
-                    locator = page.locator(selector).first
-                    if locator.count() > 0 and locator.is_visible():
-                        locator.click()
-                        print("Clicked browser join link")
-                        page.wait_for_timeout(8000)
-                        break
-                except Exception:
-                    pass
-
-            page.wait_for_load_state("networkidle", timeout=30000)
-
-            print("Current URL:", page.url)
-            print("Page Title:", page.title())
-
-            # Wait up to 60 seconds for name field
-            name_box = None
-
-            for _ in range(12):
-                selectors = [
-                    'input#input-for-name',
-                    'input[name="inputname"]',
-                    'input[name="username"]',
-                    'input[name="name"]',
-                    'input[placeholder*="name" i]',
-                    'input[type="text"]',
-                ]
-
-                for selector in selectors:
-                    try:
-                        locator = page.locator(selector).first
-                        if locator.count() > 0 and locator.is_visible():
-                            name_box = locator
-                            print(f"Name field found with selector: {selector}")
-                            break
-                    except Exception:
-                        pass
-
-                if name_box:
+            filled = False
+            for i in range(inputs.count()):
+                if inputs.nth(i).is_visible():
+                    inputs.nth(i).fill(user)
+                    filled = True
                     break
 
-                print("Name field not found yet, waiting 5 seconds...")
-                page.wait_for_timeout(5000)
+            if not filled:
+                raise Exception("Name input not found")
 
-            if not name_box:
-                raise Exception("Name input field not found")
+            # click join
+            buttons = page.locator("button")
 
-            # Fill name
-            name_box.fill(user)
-            page.wait_for_timeout(2000)
-
-            # Click Join button
-            join_selectors = [
-                'button:has-text("Join")',
-                'button:has-text("Join Meeting")',
-                'button[type="submit"]',
-            ]
-
-            joined = False
-
-            for selector in join_selectors:
-                try:
-                    btn = page.locator(selector).first
-                    if btn.count() > 0 and btn.is_visible():
+            clicked = False
+            for i in range(buttons.count()):
+                btn = buttons.nth(i)
+                if btn.is_visible():
+                    if "join" in btn.inner_text().lower():
                         btn.click()
-                        joined = True
-                        print(f"{user}: Join button clicked")
+                        clicked = True
                         break
-                except Exception:
-                    pass
 
-            if not joined:
+            if not clicked:
                 raise Exception("Join button not found")
 
-            # Wait to enter meeting
             page.wait_for_timeout(15000)
 
-            print(f"{user}: Joined successfully")
+            print(f"{user} joined successfully")
 
-            # Stay in meeting for 30 minutes
-            page.wait_for_timeout(1800000)
+            page.wait_for_timeout(1800000)  # 30 min stay
 
             context.close()
             return True
 
         except Exception as e:
-            print(f"{user}: Failed -> {e}")
-
+            print(f"{user} error: {e}")
             try:
                 page.screenshot(path=f"{user}_error.png")
-            except Exception:
+            except:
                 pass
-
-            try:
-                context.close()
-            except Exception:
-                pass
-
+            context.close()
             return False
 
     @classmethod
     def start(cls):
-        joined_users = []
 
-        try:
-            with sync_playwright() as p:
-                browser = p.chromium.launch(
-                    headless=True,
-                    args=[
-                        "--no-sandbox",
-                        "--disable-setuid-sandbox",
-                        "--disable-dev-shm-usage",
-                        "--disable-gpu",
-                        "--mute-audio",
-                        "--disable-notifications",
-                        "--disable-popup-blocking",
-                        "--disable-infobars",
-                        "--window-size=1280,720",
-                    ],
-                )
+        result = []
 
-                for user in cls.users:
-                    if cls.join_user(browser, user):
-                        joined_users.append(user)
-                    time.sleep(1)
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                headless=True,
+                args=["--no-sandbox", "--disable-dev-shm-usage"]
+            )
 
-                browser.close()
+            for user in cls.users:
+                if cls.join_user(browser, user):
+                    result.append(user)
 
-            print({
-                "status": "success",
-                "joined_count": len(joined_users),
-                "joined_users": joined_users,
-                "duration": "30 minutes",
-            })
+            browser.close()
 
-            return {
-                "status": "success",
-                "joined_count": len(joined_users),
-                "joined_users": joined_users,
-                "duration": "30 minutes",
-            }
-
-        except Exception as e:
-            print({
-                "status": "error",
-                "message": str(e),
-            })
-
-            return {
-                "status": "error",
-                "message": str(e),
-            }
+        return {
+            "status": "success",
+            "joined_users": result
+        }
