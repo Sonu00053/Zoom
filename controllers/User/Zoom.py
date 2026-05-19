@@ -8,7 +8,6 @@ class ZoomController:
     # add multiple names here
     users = ["ABC2"]
 
-
     @classmethod
     def join_user(cls, browser, user):
         print(f"Joining {user}...")
