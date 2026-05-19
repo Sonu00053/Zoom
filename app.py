@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 from threading import Thread
 from controllers.User.Zoom import ZoomController
-import traceback
 
 app = FastAPI(
     title="Zoom Automation API",
@@ -18,20 +17,8 @@ def health():
 
 @app.get("/zoom")
 def zoom():
-    try:
-        Thread(
-            target=ZoomController.start,
-            daemon=True
-        ).start()
-
-        return {
-            "status": "started",
-            "message": "Zoom bot started in background"
-        }
-
-    except Exception as e:
-        return {
-            "status": "error",
-            "message": str(e),
-            "traceback": traceback.format_exc()
-        }
+    Thread(target=ZoomController.start, daemon=True).start()
+    return {
+        "status": "started",
+        "message": "Zoom bot started in background"
+    }
