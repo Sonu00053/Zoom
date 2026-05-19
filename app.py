@@ -1,5 +1,5 @@
-# app.py
 from fastapi import FastAPI
+from threading import Thread
 from controllers.User.Zoom import ZoomController
 
 app = FastAPI(
@@ -20,4 +20,11 @@ def health():
 
 @app.get("/zoom")
 def zoom():
-    return ZoomController.start()
+    # Background thread में Zoom bot शुरू करें
+    Thread(target=ZoomController.start, daemon=True).start()
+
+    # तुरंत response दें
+    return {
+        "status": "started",
+        "message": "Zoom bot started in background"
+    }
