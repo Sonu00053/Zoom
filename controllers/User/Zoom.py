@@ -3,8 +3,11 @@ import time
 
 
 class ZoomController:
+    # meeting_url can be WC/JOIN link
     meeting_url = "https://app.zoom.us/wc/join/9779246549?pwd=UezT5M"
+    # add multiple names here
     users = ["ABC2"]
+
 
     @classmethod
     def join_user(cls, browser, user):
