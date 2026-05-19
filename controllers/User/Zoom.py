@@ -10,7 +10,11 @@ class ZoomController:
 
     # Add participant names here
     users = [
-        "ABC2"
+        "ABC2",
+        "DEF2",
+        "GHI2",
+        "JKL2",
+        "MNO2",
     ]
 
     # Stay in meeting for 30 minutes
