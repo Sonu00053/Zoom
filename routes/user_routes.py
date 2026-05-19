@@ -3,7 +3,7 @@ from controllers.User.Zoom import ZoomController
 
 router = APIRouter()
 
-
 @router.get("/zoom")
 def zoom():
-    return ZoomController.start()
+    Thread(target=ZoomController.start, daemon=True).start()
+    return {"status": "started"}
