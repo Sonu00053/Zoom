@@ -6,7 +6,7 @@ zoom_bp = Blueprint("zoom", __name__)
 
 @zoom_bp.route("/zoom")
 def zoom():
-    print("ROUTE HIT /zoom")
+    print("ROUTE HIT Ho gaya /zoom")
 
     Thread(target=ZoomController.start).start()
 
