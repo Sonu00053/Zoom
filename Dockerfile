@@ -2,7 +2,6 @@ FROM python:3.13-slim
 
 WORKDIR /app
 
-# system deps for playwright
 RUN apt-get update && apt-get install -y \
     wget curl \
     libnss3 libatk1.0-0 libatk-bridge2.0-0 \
@@ -15,7 +14,7 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-RUN playwright install --with-deps chromium
+RUN playwright install chromium
 
 COPY . .
 
