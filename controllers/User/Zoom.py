@@ -8,7 +8,7 @@ class ZoomController:
 
     users = ["ABC2", "DEF2", "GHI2"]
 
-    stay_seconds = 10  # ⚠️ Railway safe (30 min हटाया)
+    stay_seconds = 10
 
     @classmethod
     def join_user(cls, browser, user):
@@ -25,7 +25,6 @@ class ZoomController:
 
             page.wait_for_timeout(3000)
 
-            # Try join button safely
             try:
                 page.click("text=Join from Your Browser", timeout=3000)
             except:
@@ -33,7 +32,6 @@ class ZoomController:
 
             page.wait_for_timeout(2000)
 
-            # Fill name (safe selectors only)
             for selector in [
                 'input[name="name"]',
                 'input[type="text"]',
@@ -46,19 +44,14 @@ class ZoomController:
                 except:
                     pass
 
-            page.wait_for_timeout(1000)
-
-            # Join button
             try:
                 page.click("button:has-text('Join')", timeout=5000)
             except:
                 pass
 
-            page.wait_for_timeout(5000)
-
             print(f"{user} joined")
 
-            time.sleep(cls.stay_seconds)
+            page.wait_for_timeout(cls.stay_seconds * 1000)
 
             context.close()
             return True
@@ -76,24 +69,14 @@ class ZoomController:
         with sync_playwright() as p:
             browser = p.chromium.launch(
                 headless=True,
-                args=[
-                    "--no-sandbox",
-                    "--disable-dev-shm-usage",
-                    "--disable-gpu"
-                ],
+                args=["--no-sandbox", "--disable-dev-shm-usage"]
             )
 
             for user in cls.users:
-                try:
-                    if cls.join_user(browser, user):
-                        joined.append(user)
-                    time.sleep(1)
-                except Exception as e:
-                    print("Error:", e)
+                if cls.join_user(browser, user):
+                    joined.append(user)
+                time.sleep(1)
 
             browser.close()
 
-        print({
-            "status": "done",
-            "joined": joined
-        })
+        print({"status": "done", "joined": joined})
