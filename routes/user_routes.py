@@ -4,7 +4,17 @@ from controllers.User.Zoom import ZoomController
 
 router = APIRouter()
 
-@router.get("/zoom")
+@app.route("/zoom")
 def zoom():
-    Thread(target=ZoomController.start, daemon=True).start()
+    import threading
+
+    print("ROUTE HIT /zoom")
+
+    try:
+        t = threading.Thread(target=ZoomController.start)
+        t.start()
+        print("THREAD STARTED")
+    except Exception as e:
+        print("THREAD ERROR:", e)
+
     return {"status": "started"}
