@@ -6,7 +6,7 @@ class ZoomController:
 
     meeting_url = "https://app.zoom.us/wc/join/81669486069?pwd=7x9FAa"
 
-    users = ["ABC2", "DEF2", "GHI2"]
+    users = ["ABC2", "DEF2", "GHI2", "JKL2", "MNO2"]
 
     stay_seconds = 10
 
