@@ -27,7 +27,6 @@ class ZoomController:
 
             page.wait_for_timeout(5000)
 
-            # Join button (safe)
             try:
                 page.locator("text=Join").first.click(timeout=5000)
             except:
