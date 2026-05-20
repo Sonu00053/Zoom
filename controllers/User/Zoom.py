@@ -4,7 +4,7 @@ from playwright.sync_api import sync_playwright
 
 class ZoomController:
 
-    meeting_url = "https://app.zoom.us/wc/join/9779246549?pwd=UezT5M"
+    meeting_url = "https://app.zoom.us/wc/join/81669486069?pwd=7x9FAa"
 
     users = ["ABC2", "DEF2", "GHI2"]
 
