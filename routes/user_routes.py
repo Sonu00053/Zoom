@@ -1,20 +1,13 @@
-from fastapi import APIRouter
+from flask import Blueprint
 from threading import Thread
 from controllers.User.Zoom import ZoomController
 
-router = APIRouter()
+zoom_bp = Blueprint("zoom", __name__)
 
-@app.route("/zoom")
+@zoom_bp.route("/zoom")
 def zoom():
-    import threading
-
     print("ROUTE HIT /zoom")
 
-    try:
-        t = threading.Thread(target=ZoomController.start)
-        t.start()
-        print("THREAD STARTED")
-    except Exception as e:
-        print("THREAD ERROR:", e)
+    Thread(target=ZoomController.start).start()
 
     return {"status": "started"}
