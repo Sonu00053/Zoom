@@ -6,8 +6,13 @@ zoom_bp = Blueprint("zoom", __name__)
 
 @zoom_bp.route("/zoom")
 def zoom():
-    print("ROUTE HIT Ho gaya /zoom")
+    print("🔥 ROUTE HIT /zoom")
 
-    Thread(target=ZoomController.start).start()
+    try:
+        t = Thread(target=ZoomController.start)
+        t.start()
+        print("🚀 THREAD STARTED")
+    except Exception as e:
+        print("❌ THREAD ERROR:", e)
 
     return {"status": "started"}

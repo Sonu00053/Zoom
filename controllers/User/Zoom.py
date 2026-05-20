@@ -11,42 +11,44 @@ class ZoomController:
     stay_seconds = 10
 
     @classmethod
+    def start(cls):
+
+        print("🚀 Zoom Bot START CALLED")
+
+        try:
+            with sync_playwright() as p:
+                browser = p.chromium.launch(
+                    headless=True,
+                    args=["--no-sandbox", "--disable-dev-shm-usage"]
+                )
+
+                for user in cls.users:
+                    print(f"➡️ Trying user: {user}")
+                    cls.join_user(browser, user)
+
+                browser.close()
+
+        except Exception as e:
+            print("❌ BOT ERROR:", e)
+
+    @classmethod
     def join_user(cls, browser, user):
 
-        context = browser.new_context(
-            viewport={"width": 1366, "height": 768},
-            user_agent="Mozilla/5.0 Chrome/124",
-        )
-
+        context = browser.new_context()
         page = context.new_page()
 
         try:
-            print(f"➡️ Opening Zoom for {user}")
-
-            page.goto(cls.meeting_url, wait_until="networkidle", timeout=90000)
-
-            page.wait_for_timeout(5000)
+            page.goto(cls.meeting_url, timeout=60000)
+            page.wait_for_timeout(3000)
 
             try:
                 page.locator("text=Join").first.click(timeout=5000)
             except:
-                print("Join button not found")
+                pass
 
-            page.wait_for_timeout(3000)
+            page.fill('input[type="text"]', user)
 
-            # Name input (safe universal)
-            try:
-                page.fill('input[type="text"]', user)
-            except:
-                print("Name input not found")
-
-            page.wait_for_timeout(2000)
-
-            # Final join
-            try:
-                page.locator("button:has-text('Join')").click(timeout=5000)
-            except:
-                print("Final join button not found")
+            page.locator("button:has-text('Join')").click(timeout=5000)
 
             print(f"✅ {user} joined")
 
@@ -56,31 +58,6 @@ class ZoomController:
             return True
 
         except Exception as e:
-            print(f"❌ {user} FAILED: {e}")
+            print(f"❌ {user} failed:", e)
             context.close()
             return False
-
-    @classmethod
-    def start(cls):
-
-        print("🚀 Zoom Bot Started")
-
-        joined = []
-
-        with sync_playwright() as p:
-            browser = p.chromium.launch(
-                headless=True,
-                args=["--no-sandbox", "--disable-dev-shm-usage"]
-            )
-
-            for user in cls.users:
-                result = cls.join_user(browser, user)
-
-                if result:
-                    joined.append(user)
-
-                time.sleep(2)
-
-            browser.close()
-
-        print("🎯 DONE:", {"joined": joined})
