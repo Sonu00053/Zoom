@@ -7,12 +7,12 @@ class ZoomController:
 
     users = ["ABC2", "DEF2", "GHI2", "JKL2", "MNO2"]
 
-    stay_seconds = 60  # test safe (30 min mat lagao abhi)
+    stay_seconds = 60  # test safe
 
     @classmethod
     def join_user(cls, browser, user):
 
-        print(f"Joining {user}")
+        from playwright.sync_api import sync_playwright  # lazy safe import
 
         context = browser.new_context(
             viewport={"width": 1366, "height": 768},
@@ -26,15 +26,13 @@ class ZoomController:
 
             page.wait_for_timeout(5000)
 
-            # join from browser
             try:
-                page.click("text=Join from Your Browser", timeout=5000)
+                page.click("text=Join from Your Browser")
             except:
                 pass
 
             page.wait_for_timeout(3000)
 
-            # name fill
             for sel in [
                 'input[name="name"]',
                 'input[type="text"]',
@@ -49,7 +47,6 @@ class ZoomController:
 
             page.wait_for_timeout(2000)
 
-            # join button
             try:
                 page.click("button:has-text('Join')")
             except:
@@ -57,28 +54,29 @@ class ZoomController:
 
             page.wait_for_timeout(8000)
 
-            print(f"{user} joined")
-
             time.sleep(cls.stay_seconds)
 
             context.close()
             return True
 
         except Exception as e:
-            print(f"{user} failed: {e}")
+            print(f"{user} error:", e)
             context.close()
             return False
 
     @classmethod
     def start(cls):
 
-        # 🔥 IMPORTANT: lazy import (fix Railway crash)
         from playwright.sync_api import sync_playwright
 
         with sync_playwright() as p:
             browser = p.chromium.launch(
                 headless=True,
-                args=["--no-sandbox", "--disable-dev-shm-usage"]
+                args=[
+                    "--no-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-gpu"
+                ],
             )
 
             for user in cls.users:
