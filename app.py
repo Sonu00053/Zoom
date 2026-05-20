@@ -7,7 +7,7 @@ app.register_blueprint(zoom_bp)
 
 @app.route("/")
 def home():
-    return {"status": "alive"}
+    return {"status": "alive ho gaya"}
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)
