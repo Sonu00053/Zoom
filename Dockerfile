@@ -1,11 +1,10 @@
-FROM python:3.13-slim
+FROM python:3.11-slim
 
 WORKDIR /app
 
-# system dependencies (IMPORTANT for Playwright)
+# system dependencies for playwright
 RUN apt-get update && apt-get install -y \
-    wget \
-    curl \
+    wget curl \
     libnss3 \
     libatk1.0-0 \
     libatk-bridge2.0-0 \
@@ -21,15 +20,13 @@ RUN apt-get update && apt-get install -y \
     libgtk-3-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# install python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# install playwright browser
+# IMPORTANT FIX (Playwright stable install)
+RUN pip install playwright
 RUN python -m playwright install --with-deps chromium
 
-# copy project
 COPY . .
 
-# start app
 CMD ["python", "app.py"]
