@@ -19,5 +19,4 @@ RUN playwright install --with-deps chromium
 
 COPY . .
 
-# ✅ IMPORTANT: python entrypoint (fix PORT issue)
 CMD ["python", "app.py"]
