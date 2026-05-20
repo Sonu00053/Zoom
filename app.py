@@ -7,11 +7,11 @@ app = FastAPI()
 def home():
     return {"status": "alive"}
 
-# Railway safe entry
 if __name__ == "__main__":
     import uvicorn
 
-    port = int(os.environ.get("PORT", 8000))  # FIX for $PORT issue
+    # 🔥 IMPORTANT FIX
+    port = int(os.environ.get("PORT", 8000))
 
     uvicorn.run(
         "app:app",
