@@ -1,4 +1,3 @@
-from playwright.sync_api import sync_playwright
 import time
 
 
@@ -6,23 +5,18 @@ class ZoomController:
 
     meeting_url = "https://app.zoom.us/wc/join/9779246549?pwd=UezT5M"
 
-    users = [
-        "ABC2",
-        "DEF2",
-        "GHI2",
-        "JKL2",
-        "MNO2",
-    ]
+    users = ["ABC2", "DEF2", "GHI2", "JKL2", "MNO2"]
 
-    stay_seconds = 60  # testing (30 min = 1800)
+    stay_seconds = 60  # test safe (30 min mat lagao abhi)
 
     @classmethod
     def join_user(cls, browser, user):
+
         print(f"Joining {user}")
 
         context = browser.new_context(
             viewport={"width": 1366, "height": 768},
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124 Safari/537.36",
+            user_agent="Mozilla/5.0 Chrome/124",
         )
 
         page = context.new_page()
@@ -30,7 +24,7 @@ class ZoomController:
         try:
             page.goto(cls.meeting_url, wait_until="domcontentloaded", timeout=60000)
 
-            page.wait_for_timeout(8000)
+            page.wait_for_timeout(5000)
 
             # join from browser
             try:
@@ -38,7 +32,7 @@ class ZoomController:
             except:
                 pass
 
-            page.wait_for_timeout(5000)
+            page.wait_for_timeout(3000)
 
             # name fill
             for sel in [
@@ -56,18 +50,12 @@ class ZoomController:
             page.wait_for_timeout(2000)
 
             # join button
-            for sel in [
-                "button:has-text('Join')",
-                "button[type='submit']"
-            ]:
-                try:
-                    if page.locator(sel).count() > 0:
-                        page.click(sel)
-                        break
-                except:
-                    pass
+            try:
+                page.click("button:has-text('Join')")
+            except:
+                pass
 
-            page.wait_for_timeout(10000)
+            page.wait_for_timeout(8000)
 
             print(f"{user} joined")
 
@@ -83,14 +71,14 @@ class ZoomController:
 
     @classmethod
     def start(cls):
+
+        # 🔥 IMPORTANT: lazy import (fix Railway crash)
+        from playwright.sync_api import sync_playwright
+
         with sync_playwright() as p:
             browser = p.chromium.launch(
                 headless=True,
-                args=[
-                    "--no-sandbox",
-                    "--disable-dev-shm-usage",
-                    "--disable-gpu",
-                ],
+                args=["--no-sandbox", "--disable-dev-shm-usage"]
             )
 
             for user in cls.users:
