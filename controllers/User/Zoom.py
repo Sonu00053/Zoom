@@ -21,35 +21,35 @@ class ZoomController:
         page = context.new_page()
 
         try:
-            page.goto(cls.meeting_url, wait_until="domcontentloaded", timeout=60000)
+            print(f"➡️ Opening Zoom for {user}")
+
+            page.goto(cls.meeting_url, wait_until="networkidle", timeout=90000)
+
+            page.wait_for_timeout(5000)
+
+            # Join button (safe)
+            try:
+                page.locator("text=Join").first.click(timeout=5000)
+            except:
+                print("Join button not found")
 
             page.wait_for_timeout(3000)
 
+            # Name input (safe universal)
             try:
-                page.click("text=Join from Your Browser", timeout=3000)
+                page.fill('input[type="text"]', user)
             except:
-                pass
+                print("Name input not found")
 
             page.wait_for_timeout(2000)
 
-            for selector in [
-                'input[name="name"]',
-                'input[type="text"]',
-                'input[placeholder*="name" i]'
-            ]:
-                try:
-                    if page.locator(selector).count() > 0:
-                        page.fill(selector, user)
-                        break
-                except:
-                    pass
-
+            # Final join
             try:
-                page.click("button:has-text('Join')", timeout=5000)
+                page.locator("button:has-text('Join')").click(timeout=5000)
             except:
-                pass
+                print("Final join button not found")
 
-            print(f"{user} joined")
+            print(f"✅ {user} joined")
 
             page.wait_for_timeout(cls.stay_seconds * 1000)
 
@@ -57,12 +57,14 @@ class ZoomController:
             return True
 
         except Exception as e:
-            print(f"{user} failed: {e}")
+            print(f"❌ {user} FAILED: {e}")
             context.close()
             return False
 
     @classmethod
     def start(cls):
+
+        print("🚀 Zoom Bot Started")
 
         joined = []
 
@@ -73,10 +75,13 @@ class ZoomController:
             )
 
             for user in cls.users:
-                if cls.join_user(browser, user):
+                result = cls.join_user(browser, user)
+
+                if result:
                     joined.append(user)
-                time.sleep(1)
+
+                time.sleep(2)
 
             browser.close()
 
-        print({"status": "done", "joined": joined})
+        print("🎯 DONE:", {"joined": joined})
